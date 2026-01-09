@@ -1,4 +1,13 @@
 <resources>
-    <string name="app_name">Maga Translate</string>
-    <string name="welcome_message">Maga Translate is ready.</string>
+    <string name="app_name">Manga Translator</string>
+    <string name="welcome_message">请选择漫画图片进行气泡识别与 OCR 测试。</string>
+    <string name="upload_image">上传图片</string>
+    <string name="preview_image">检测预览</string>
+    <string name="loading_image">图片加载中…</string>
+    <string name="detecting_bubbles">气泡检测中…</string>
+    <string name="ocr_in_progress">文字识别中…</string>
+    <string name="render_complete">完成：%1$d 个气泡</string>
+    <string name="no_bubbles">未检测到气泡。</string>
+    <string name="ocr_failed">识别失败，请检查模型文件。</string>
+    <string name="load_image_failed">图片读取失败。</string>
 </resources>

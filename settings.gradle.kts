@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "maga-translate"
+rootProject.name = "manga-translator"
 include(":app")

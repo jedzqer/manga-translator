@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.maga.translate"
+    namespace = "com.manga.translate"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.maga.translate"
+        applicationId = "com.manga.translate"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
