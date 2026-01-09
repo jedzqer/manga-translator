@@ -9,7 +9,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class LlmClient(context: Context) {
-    private val settingsStore = SettingsStore(context)
+    private val appContext = context.applicationContext
+    private val settingsStore = SettingsStore(appContext)
+    private val promptConfig: LlmPromptConfig by lazy { loadPromptConfig() }
 
     fun isConfigured(): Boolean {
         return settingsStore.load().isValid()
@@ -63,16 +65,24 @@ class LlmClient(context: Context) {
     }
 
     private fun buildPayload(text: String, modelName: String): JSONObject {
+        val config = promptConfig
         val messages = JSONArray()
         messages.put(
             JSONObject()
                 .put("role", "system")
-                .put("content", SYSTEM_PROMPT)
+                .put("content", config.systemPrompt)
         )
+        for (message in config.exampleMessages) {
+            messages.put(
+                JSONObject()
+                    .put("role", message.role)
+                    .put("content", message.content)
+            )
+        }
         messages.put(
             JSONObject()
                 .put("role", "user")
-                .put("content", USER_PROMPT_PREFIX + text)
+                .put("content", config.userPromptPrefix + text)
         )
         return JSONObject()
             .put("model", modelName)
@@ -92,10 +102,40 @@ class LlmClient(context: Context) {
         }
     }
 
+    private fun loadPromptConfig(): LlmPromptConfig {
+        val json = JSONObject(readAsset(PROMPT_CONFIG_ASSET))
+        val systemPrompt = json.optString("system_prompt")
+        val userPromptPrefix = json.optString("user_prompt_prefix")
+        val examplesJson = json.optJSONArray("example_messages") ?: JSONArray()
+        val examples = ArrayList<PromptMessage>(examplesJson.length())
+        for (i in 0 until examplesJson.length()) {
+            val messageObj = examplesJson.optJSONObject(i) ?: continue
+            val role = messageObj.optString("role")
+            val content = messageObj.optString("content")
+            if (role.isNotBlank() && content.isNotBlank()) {
+                examples.add(PromptMessage(role, content))
+            }
+        }
+        return LlmPromptConfig(systemPrompt, userPromptPrefix, examples)
+    }
+
+    private fun readAsset(name: String): String {
+        return appContext.assets.open(name).bufferedReader().use { it.readText() }
+    }
+
     companion object {
         private const val TIMEOUT_MS = 30_000
-        private const val SYSTEM_PROMPT =
-            "You are a professional manga translator. Translate Japanese dialogue into natural, concise Simplified Chinese. Preserve tone, speaker intent, and onomatopoeia. Return only the translated text."
-        private const val USER_PROMPT_PREFIX = "请将以下日文翻译为简体中文，只输出译文：\n"
+        private const val PROMPT_CONFIG_ASSET = "llm_prompts.json"
     }
 }
+
+private data class LlmPromptConfig(
+    val systemPrompt: String,
+    val userPromptPrefix: String,
+    val exampleMessages: List<PromptMessage>
+)
+
+private data class PromptMessage(
+    val role: String,
+    val content: String
+)
