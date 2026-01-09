@@ -46,3 +46,7 @@ Thumbs.db
 # Misc
 *.swp
 *.swo
+
+# Model weights (local only)
+assets/*.onnx
+assets/*.pt
