@@ -1,8 +1,9 @@
 package com.manga.translate
 
-import android.os.Bundle
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
+import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,8 +11,10 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import com.manga.translate.databinding.FragmentSettingsBinding
+import java.io.File
 
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
@@ -40,11 +43,18 @@ class SettingsFragment : Fragment() {
             val key = binding.apiKeyInput.text?.toString()?.trim().orEmpty()
             val model = binding.modelNameInput.text?.toString()?.trim().orEmpty()
             settingsStore.save(ApiSettings(url, key, model))
+            AppLogger.log("Settings", "API settings saved")
             Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show()
         }
 
         binding.viewLogsButton.setOnClickListener {
+            AppLogger.log("Settings", "View current log")
             showLogsDialog()
+        }
+
+        binding.openLogsFolderButton.setOnClickListener {
+            AppLogger.log("Settings", "Share log file")
+            showLogFilesDialog()
         }
     }
 
@@ -55,6 +65,51 @@ class SettingsFragment : Fragment() {
 
     private fun showLogsDialog() {
         val logs = AppLogger.readLogs().ifBlank { getString(R.string.logs_empty) }
+        showLogTextDialog(getString(R.string.logs_title), logs)
+    }
+
+    private fun showLogFilesDialog() {
+        val files = AppLogger.listLogFiles()
+        if (files.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.logs_folder_empty, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val names = files.map { it.name }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.logs_folder_title)
+            .setItems(names) { _, which ->
+                shareLogFile(files[which])
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun shareLogFile(file: File) {
+        if (!file.exists()) {
+            Toast.makeText(requireContext(), R.string.logs_empty, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val uri = FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(intent, getString(R.string.share_logs))
+        val manager = requireContext().packageManager
+        if (chooser.resolveActivity(manager) != null) {
+            AppLogger.log("Settings", "Share log file ${file.name}")
+            startActivity(chooser)
+        } else {
+            Toast.makeText(requireContext(), R.string.share_logs_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showLogTextDialog(title: String, logs: String) {
         val padding = (resources.displayMetrics.density * 16).toInt()
         val textView = TextView(requireContext()).apply {
             text = logs
@@ -65,7 +120,7 @@ class SettingsFragment : Fragment() {
             addView(textView)
         }
         AlertDialog.Builder(requireContext())
-            .setTitle(R.string.logs_title)
+            .setTitle(title)
             .setView(scrollView)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.copy_logs) { _, _ ->

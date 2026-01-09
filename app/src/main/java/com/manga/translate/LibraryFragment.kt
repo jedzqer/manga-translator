@@ -25,9 +25,16 @@ class LibraryFragment : Fragment() {
     private lateinit var repository: LibraryRepository
     private lateinit var translationPipeline: TranslationPipeline
     private val translationStore = TranslationStore()
-    private val folderAdapter = LibraryFolderAdapter { openFolder(it.folder) }
-    private val imageAdapter = FolderImageAdapter()
+    private val folderAdapter = LibraryFolderAdapter(
+        onClick = { openFolder(it.folder) },
+        onDelete = { confirmDeleteFolder(it.folder) }
+    )
+    private val imageAdapter = FolderImageAdapter(
+        onSelectionChanged = { updateSelectionActions() },
+        onItemLongPress = { enterSelectionMode(it.file) }
+    )
     private var currentFolder: File? = null
+    private var imageSelectionMode = false
 
     private val pickImages = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -60,11 +67,18 @@ class LibraryFragment : Fragment() {
         binding.folderAddImages.setOnClickListener { pickImages.launch(arrayOf("image/*")) }
         binding.folderTranslate.setOnClickListener { translateFolder() }
         binding.folderRead.setOnClickListener { startReading() }
+        binding.folderSelectAll.setOnClickListener { toggleSelectAllImages() }
+        binding.folderDeleteSelected.setOnClickListener { confirmDeleteSelectedImages() }
+        binding.folderCancelSelection.setOnClickListener { exitSelectionMode() }
 
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    if (imageSelectionMode) {
+                        exitSelectionMode()
+                        return
+                    }
                     if (binding.folderDetailContainer.visibility == View.VISIBLE) {
                         showFolderList()
                     } else {
@@ -89,7 +103,9 @@ class LibraryFragment : Fragment() {
         binding.libraryListContainer.visibility = View.VISIBLE
         binding.folderDetailContainer.visibility = View.GONE
         binding.addFolderFab.visibility = View.VISIBLE
-        binding.folderStatus.text = ""
+        clearFolderStatus()
+        exitSelectionMode()
+        folderAdapter.clearDeleteSelection()
         loadFolders()
     }
 
@@ -99,6 +115,8 @@ class LibraryFragment : Fragment() {
         binding.libraryListContainer.visibility = View.GONE
         binding.folderDetailContainer.visibility = View.VISIBLE
         binding.addFolderFab.visibility = View.GONE
+        exitSelectionMode()
+        AppLogger.log("Library", "Opened folder ${folder.name}")
         loadImages(folder)
     }
 
@@ -119,7 +137,11 @@ class LibraryFragment : Fragment() {
         }
         imageAdapter.submit(items)
         binding.folderImagesEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
-        binding.folderStatus.text = ""
+        if (imageSelectionMode) {
+            updateSelectionActions()
+        } else {
+            clearFolderStatus()
+        }
     }
 
     private fun openFolder(folder: File) {
@@ -138,12 +160,14 @@ class LibraryFragment : Fragment() {
                 val name = input.text?.toString().orEmpty()
                 val folder = repository.createFolder(name)
                 if (folder == null) {
+                    AppLogger.log("Library", "Create folder failed: $name")
                     Toast.makeText(
                         requireContext(),
                         R.string.folder_create_failed,
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
+                    AppLogger.log("Library", "Created folder ${folder.name}")
                     loadFolders()
                 }
             }
@@ -152,35 +176,61 @@ class LibraryFragment : Fragment() {
 
     private fun addImagesToFolder(uris: List<Uri>) {
         val folder = currentFolder ?: return
-        repository.addImages(folder, uris)
+        val added = repository.addImages(folder, uris)
+        AppLogger.log("Library", "Added ${added.size} images to ${folder.name}")
         loadImages(folder)
         loadFolders()
     }
 
+    private fun confirmDeleteFolder(folder: File) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.folder_delete)
+            .setMessage(getString(R.string.folder_delete_confirm, folder.name))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.folder_delete) { _, _ ->
+                val deleted = repository.deleteFolder(folder)
+                if (!deleted) {
+                    AppLogger.log("Library", "Delete folder failed: ${folder.name}")
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.folder_delete_failed,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    AppLogger.log("Library", "Deleted folder ${folder.name}")
+                }
+                loadFolders()
+            }
+            .show()
+    }
+
     private fun translateFolder() {
         val folder = currentFolder ?: return
+        exitSelectionMode()
         val images = repository.listImages(folder)
         if (images.isEmpty()) {
-            binding.folderStatus.text = getString(R.string.folder_images_empty)
+            setFolderStatus(getString(R.string.folder_images_empty))
             return
         }
         val llmClient = LlmClient(requireContext())
         if (!llmClient.isConfigured()) {
-            binding.folderStatus.text = getString(R.string.missing_api_settings)
+            setFolderStatus(getString(R.string.missing_api_settings))
             return
         }
         binding.folderTranslate.isEnabled = false
-        binding.folderStatus.text = getString(R.string.translating_bubbles)
+        AppLogger.log("Library", "Start translating folder ${folder.name}, ${images.size} images")
         viewLifecycleOwner.lifecycleScope.launch {
             var failed = false
             try {
-                var index = 0
+                var translatedCount = 0
+                setFolderStatus(
+                    getString(R.string.folder_translation_progress, translatedCount, images.size),
+                    getString(R.string.detecting_bubbles)
+                )
                 for (image in images) {
-                    index += 1
-                    binding.folderStatus.text = getString(R.string.translation_progress, index, images.size)
                     val result = try {
                         translationPipeline.translateImage(image) { progress ->
-                            binding.folderStatus.post { binding.folderStatus.text = progress }
+                            binding.folderProgressRight.post { binding.folderProgressRight.text = progress }
                         }
                     } catch (e: Exception) {
                         AppLogger.log("Library", "Translation failed for ${image.name}", e)
@@ -188,15 +238,22 @@ class LibraryFragment : Fragment() {
                     }
                     if (result != null) {
                         translationPipeline.saveResult(image, result)
+                        translatedCount += 1
                     } else {
                         failed = true
                     }
+                    setFolderStatus(
+                        getString(R.string.folder_translation_progress, translatedCount, images.size),
+                        if (translatedCount < images.size) getString(R.string.detecting_bubbles) else ""
+                    )
                 }
-                binding.folderStatus.text = if (failed) {
-                    getString(R.string.translation_failed)
-                } else {
-                    getString(R.string.translation_done)
-                }
+                setFolderStatus(
+                    if (failed) getString(R.string.translation_failed) else getString(R.string.translation_done)
+                )
+                AppLogger.log(
+                    "Library",
+                    "Folder translation ${if (failed) "completed with failures" else "completed"}: ${folder.name}"
+                )
                 loadImages(folder)
             } finally {
                 binding.folderTranslate.isEnabled = true
@@ -206,12 +263,99 @@ class LibraryFragment : Fragment() {
 
     private fun startReading() {
         val folder = currentFolder ?: return
+        exitSelectionMode()
         val images = repository.listImages(folder)
         if (images.isEmpty()) {
-            binding.folderStatus.text = getString(R.string.folder_images_empty)
+            setFolderStatus(getString(R.string.folder_images_empty))
             return
         }
+        AppLogger.log("Library", "Start reading ${folder.name}, ${images.size} images")
         readingSessionViewModel.setFolder(folder, images)
         (activity as? MainActivity)?.switchToTab(MainPagerAdapter.READING_INDEX)
+    }
+
+    private fun enterSelectionMode(target: File) {
+        if (!imageSelectionMode) {
+            imageSelectionMode = true
+            imageAdapter.setSelectionMode(true)
+            binding.folderSelectionActions.visibility = View.VISIBLE
+        }
+        imageAdapter.toggleSelectionAndNotify(target)
+        updateSelectionActions()
+    }
+
+    private fun exitSelectionMode() {
+        if (!imageSelectionMode) return
+        imageSelectionMode = false
+        imageAdapter.setSelectionMode(false)
+        binding.folderSelectionActions.visibility = View.GONE
+        clearFolderStatus()
+    }
+
+    private fun updateSelectionActions() {
+        if (!imageSelectionMode) return
+        val count = imageAdapter.selectedCount()
+        setFolderStatus(getString(R.string.folder_selection_count, count))
+        val buttonText = if (imageAdapter.areAllSelected()) {
+            getString(R.string.clear_all)
+        } else {
+            getString(R.string.select_all)
+        }
+        binding.folderSelectAll.text = buttonText
+    }
+
+    private fun toggleSelectAllImages() {
+        if (!imageSelectionMode) return
+        if (imageAdapter.areAllSelected()) {
+            imageAdapter.clearSelection()
+        } else {
+            imageAdapter.selectAll()
+        }
+        updateSelectionActions()
+    }
+
+    private fun confirmDeleteSelectedImages() {
+        val folder = currentFolder ?: return
+        val selected = imageAdapter.getSelectedFiles()
+        if (selected.isEmpty()) {
+            setFolderStatus(getString(R.string.delete_images_empty))
+            return
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.delete_selected)
+            .setMessage(getString(R.string.delete_images_confirm, selected.size))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.delete_selected) { _, _ ->
+                var failed = false
+                for (file in selected) {
+                    if (!file.delete()) {
+                        failed = true
+                    }
+                    translationStore.translationFileFor(file).delete()
+                }
+                if (failed) {
+                    AppLogger.log("Library", "Delete selected images failed in ${folder.name}")
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.delete_images_failed,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    AppLogger.log("Library", "Deleted ${selected.size} images from ${folder.name}")
+                }
+                exitSelectionMode()
+                loadImages(folder)
+                loadFolders()
+            }
+            .show()
+    }
+
+    private fun setFolderStatus(left: String, right: String = "") {
+        binding.folderProgressLeft.text = left
+        binding.folderProgressRight.text = right
+    }
+
+    private fun clearFolderStatus() {
+        setFolderStatus("")
     }
 }

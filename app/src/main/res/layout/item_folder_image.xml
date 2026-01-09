@@ -6,6 +6,12 @@
     android:orientation="horizontal"
     android:padding="12dp">
 
+    <CheckBox
+        android:id="@+id/image_check"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/image_name"
         android:layout_width="0dp"

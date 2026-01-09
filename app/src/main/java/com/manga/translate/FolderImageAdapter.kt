@@ -1,34 +1,94 @@
 package com.manga.translate
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.manga.translate.databinding.ItemFolderImageBinding
+import java.io.File
 
-class FolderImageAdapter : RecyclerView.Adapter<FolderImageAdapter.ImageViewHolder>() {
+class FolderImageAdapter(
+    private val onSelectionChanged: () -> Unit,
+    private val onItemLongPress: (ImageItem) -> Unit
+) : RecyclerView.Adapter<FolderImageAdapter.ImageViewHolder>() {
     private val items = ArrayList<ImageItem>()
+    private val selectedPaths = LinkedHashSet<String>()
+    private var selectionMode = false
 
     fun submit(list: List<ImageItem>) {
         items.clear()
         items.addAll(list)
+        if (selectionMode) {
+            val validPaths = items.map { it.file.absolutePath }.toHashSet()
+            selectedPaths.retainAll(validPaths)
+        }
         notifyDataSetChanged()
+    }
+
+    fun setSelectionMode(enabled: Boolean) {
+        selectionMode = enabled
+        if (!selectionMode) {
+            selectedPaths.clear()
+        }
+        notifyDataSetChanged()
+    }
+
+    fun toggleSelection(file: File) {
+        val path = file.absolutePath
+        if (!selectedPaths.add(path)) {
+            selectedPaths.remove(path)
+        }
+    }
+
+    fun toggleSelectionAndNotify(file: File) {
+        toggleSelection(file)
+        val index = items.indexOfFirst { it.file.absolutePath == file.absolutePath }
+        if (index >= 0) {
+            notifyItemChanged(index)
+        }
+    }
+
+    fun selectAll() {
+        selectedPaths.clear()
+        for (item in items) {
+            selectedPaths.add(item.file.absolutePath)
+        }
+        notifyDataSetChanged()
+    }
+
+    fun clearSelection() {
+        selectedPaths.clear()
+        notifyDataSetChanged()
+    }
+
+    fun getSelectedFiles(): List<File> {
+        return items.filter { selectedPaths.contains(it.file.absolutePath) }.map { it.file }
+    }
+
+    fun selectedCount(): Int = selectedPaths.size
+
+    fun areAllSelected(): Boolean {
+        return items.isNotEmpty() && selectedPaths.size == items.size
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
         val binding = ItemFolderImageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return ImageViewHolder(binding)
+        return ImageViewHolder(binding, ::onToggleSelection, onItemLongPress)
     }
 
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-        holder.bind(items[position])
+        val item = items[position]
+        holder.bind(item, selectionMode, selectedPaths.contains(item.file.absolutePath))
     }
 
     override fun getItemCount(): Int = items.size
 
     class ImageViewHolder(
-        private val binding: ItemFolderImageBinding
+        private val binding: ItemFolderImageBinding,
+        private val onToggleSelection: (ImageItem) -> Unit,
+        private val onItemLongPress: (ImageItem) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(item: ImageItem) {
+        fun bind(item: ImageItem, selectionMode: Boolean, selected: Boolean) {
             binding.imageName.text = item.file.name
             val statusRes = if (item.translated) {
                 R.string.image_translated
@@ -36,6 +96,26 @@ class FolderImageAdapter : RecyclerView.Adapter<FolderImageAdapter.ImageViewHold
                 R.string.image_not_translated
             }
             binding.imageStatus.setText(statusRes)
+            binding.imageCheck.visibility = if (selectionMode) View.VISIBLE else View.GONE
+            binding.imageCheck.setOnCheckedChangeListener(null)
+            binding.imageCheck.isChecked = selected
+            binding.imageCheck.setOnCheckedChangeListener { _, _ ->
+                onToggleSelection(item)
+            }
+            binding.root.setOnLongClickListener {
+                onItemLongPress(item)
+                true
+            }
+            binding.root.setOnClickListener {
+                if (selectionMode) {
+                    binding.imageCheck.toggle()
+                }
+            }
         }
+    }
+
+    private fun onToggleSelection(item: ImageItem) {
+        toggleSelection(item.file)
+        onSelectionChanged()
     }
 }

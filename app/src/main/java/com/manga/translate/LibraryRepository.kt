@@ -60,6 +60,11 @@ class LibraryRepository(private val context: Context) {
         return added
     }
 
+    fun deleteFolder(folder: File): Boolean {
+        if (!folder.exists()) return false
+        return folder.deleteRecursively()
+    }
+
     private fun isImageFile(name: String): Boolean {
         val lower = name.lowercase(Locale.getDefault())
         return lower.endsWith(".jpg") ||

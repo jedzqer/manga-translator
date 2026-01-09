@@ -76,13 +76,23 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="12dp" />
 
+    <Button
+        android:id="@+id/open_logs_folder_button"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/share_logs"
+        app:layout_constraintTop_toBottomOf="@id/view_logs_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="12dp" />
+
     <TextView
         android:id="@+id/settings_hint"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="@string/api_settings_note"
         android:textSize="12sp"
-        app:layout_constraintTop_toBottomOf="@id/view_logs_button"
+        app:layout_constraintTop_toBottomOf="@id/open_logs_folder_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="12dp" />

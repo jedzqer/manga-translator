@@ -25,16 +25,18 @@ class TranslationPipeline(context: Context) {
         }
         val detector = getDetector() ?: return@withContext null
         val ocr = getOcr() ?: return@withContext null
+        AppLogger.log("Pipeline", "Translate image ${imageFile.name}")
         val bitmap = android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
             ?: run {
                 AppLogger.log("Pipeline", "Failed to decode ${imageFile.name}")
                 return@withContext null
             }
+        onProgress(appContext.getString(R.string.detecting_bubbles))
         val detections = detector.detect(bitmap)
+        AppLogger.log("Pipeline", "Detected ${detections.size} bubbles in ${imageFile.name}")
         if (detections.isEmpty()) {
             return@withContext TranslationResult(imageFile.name, bitmap.width, bitmap.height, emptyList())
         }
-        onProgress(appContext.getString(R.string.ocr_in_progress))
         val bubbles = ArrayList<BubbleTranslation>(detections.size)
         val total = detections.size.coerceAtLeast(1)
         var index = 0
@@ -50,6 +52,7 @@ class TranslationPipeline(context: Context) {
             val translated = llmClient.translate(text) ?: text
             bubbles.add(BubbleTranslation(bubbleId, det.rect, translated))
         }
+        AppLogger.log("Pipeline", "Translation finished for ${imageFile.name}")
         TranslationResult(imageFile.name, bitmap.width, bitmap.height, bubbles)
     }
 

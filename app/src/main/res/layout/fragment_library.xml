@@ -104,12 +104,60 @@
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/folder_status"
+        <LinearLayout
+            android:id="@+id/folder_status_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textColor="#FF555555" />
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/folder_progress_left"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FF555555" />
+
+            <TextView
+                android:id="@+id/folder_progress_right"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:textColor="#FF555555" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/folder_selection_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/folder_select_all"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/select_all" />
+
+            <Button
+                android:id="@+id/folder_delete_selected"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/delete_selected" />
+
+            <Button
+                android:id="@+id/folder_cancel_selection"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/cancel_selection" />
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/folder_image_list"
