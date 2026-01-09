@@ -1,2 +1,48 @@
-创建项目经验总结.md
-开发文档.md
+# Gradle
+.gradle/
+build/
+*/build/
+
+# Local configuration
+local.properties
+*.keystore
+keystore.jks
+
+# APK / AAB outputs
+*.apk
+*.ap_
+*.aab
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# VS Code
+.vscode/
+
+# Kotlin/Java
+*.class
+*.log
+
+# Native build / CMake
+.cxx/
+*/.cxx/
+.externalNativeBuild/
+*/.externalNativeBuild/
+
+# Lint / reports
+lint-results*.html
+lint-results*.xml
+lint-results*.txt
+lint-reports/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.swp
+*.swo
