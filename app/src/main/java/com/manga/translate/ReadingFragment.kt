@@ -11,6 +11,9 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import com.manga.translate.databinding.FragmentReadingBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -23,6 +26,7 @@ class ReadingFragment : Fragment() {
     private lateinit var readingProgressStore: ReadingProgressStore
     private var currentImageFile: java.io.File? = null
     private var currentTranslation: TranslationResult? = null
+    private var translationWatchJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -57,6 +61,7 @@ class ReadingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        translationWatchJob?.cancel()
         _binding = null
     }
 
@@ -100,6 +105,11 @@ class ReadingFragment : Fragment() {
             }
             binding.readingImage.post {
                 updateOverlay(translation, bitmap)
+            }
+            if (translation == null && bitmap != null) {
+                startTranslationWatcher(imageFile)
+            } else {
+                translationWatchJob?.cancel()
             }
         }
     }
@@ -163,6 +173,33 @@ class ReadingFragment : Fragment() {
     private fun applyTextLayoutSetting() {
         val useHorizontal = settingsStore.loadUseHorizontalText()
         binding.translationOverlay.setVerticalLayoutEnabled(!useHorizontal)
+    }
+
+    private fun startTranslationWatcher(imageFile: java.io.File) {
+        translationWatchJob?.cancel()
+        translationWatchJob = viewLifecycleOwner.lifecycleScope.launch {
+            val jsonFile = translationStore.translationFileFor(imageFile)
+            while (isActive) {
+                if (currentImageFile?.absolutePath != imageFile.absolutePath) return@launch
+                if (jsonFile.exists()) {
+                    val translation = withContext(Dispatchers.IO) {
+                        translationStore.load(imageFile)
+                    }
+                    if (currentImageFile?.absolutePath != imageFile.absolutePath) return@launch
+                    val bitmap = binding.readingImage.drawable?.let { _ ->
+                        loadBitmap(imageFile.absolutePath)
+                    }
+                    if (bitmap != null) {
+                        binding.readingImage.setImageBitmap(bitmap)
+                    }
+                    binding.readingImage.post {
+                        updateOverlay(translation, bitmap)
+                    }
+                    return@launch
+                }
+                delay(800)
+            }
+        }
     }
 
     private fun persistReadingProgress() {

@@ -26,6 +26,7 @@ out/
 # Kotlin/Java
 *.class
 *.log
+.kotlin/
 
 # Native build / CMake
 .cxx/
