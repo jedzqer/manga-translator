@@ -15,10 +15,11 @@ class ReadingSessionViewModel : ViewModel() {
     private val _index = MutableLiveData(0)
     val index: LiveData<Int> = _index
 
-    fun setFolder(folder: File, images: List<File>) {
+    fun setFolder(folder: File, images: List<File>, startIndex: Int) {
         _currentFolder.value = folder
         _images.value = images
-        _index.value = 0
+        val clamped = startIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0))
+        _index.value = clamped
     }
 
     fun next() {

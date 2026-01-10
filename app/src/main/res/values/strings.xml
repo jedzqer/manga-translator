@@ -18,6 +18,7 @@
     <string name="api_url_hint">OpenAI 兼容 API 地址</string>
     <string name="api_key_hint">API Key</string>
     <string name="model_name_hint">模型名称</string>
+    <string name="text_layout_horizontal">漫画使用横向排版</string>
     <string name="save_settings">保存设置</string>
     <string name="settings_saved">设置已保存</string>
     <string name="api_settings_note">示例URL：https://api.openai.com/v1</string>
@@ -74,4 +75,7 @@
     <string name="about_dialog_message">当前版本：%1$s</string>
     <string name="about_open_project">打开项目页面</string>
     <string name="about_view_updates">查看更新</string>
+    <string name="crash_dialog_title">检测到上次异常退出</string>
+    <string name="crash_dialog_message">上次运行可能发生了崩溃，是否分享日志以便排查？</string>
+    <string name="crash_dialog_share">分享崩溃日志</string>
 </resources>

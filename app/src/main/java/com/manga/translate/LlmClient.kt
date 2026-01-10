@@ -17,11 +17,12 @@ class LlmClient(context: Context) {
         return settingsStore.load().isValid()
     }
 
-    suspend fun translate(text: String): String? = withContext(Dispatchers.IO) {
+    suspend fun translate(text: String, glossary: Map<String, String>): LlmTranslationResult? =
+        withContext(Dispatchers.IO) {
         val settings = settingsStore.load()
         if (!settings.isValid()) return@withContext null
         val endpoint = buildEndpoint(settings.apiUrl)
-        val payload = buildPayload(text, settings.modelName)
+        val payload = buildPayload(text, glossary, settings.modelName)
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             setRequestProperty("Content-Type", "application/json")
@@ -64,7 +65,7 @@ class LlmClient(context: Context) {
         }
     }
 
-    private fun buildPayload(text: String, modelName: String): JSONObject {
+    private fun buildPayload(text: String, glossary: Map<String, String>, modelName: String): JSONObject {
         val config = promptConfig
         val messages = JSONArray()
         messages.put(
@@ -82,7 +83,7 @@ class LlmClient(context: Context) {
         messages.put(
             JSONObject()
                 .put("role", "user")
-                .put("content", config.userPromptPrefix + text)
+                .put("content", config.userPromptPrefix + buildUserPayload(text, glossary))
         )
         return JSONObject()
             .put("model", modelName)
@@ -90,15 +91,40 @@ class LlmClient(context: Context) {
             .put("messages", messages)
     }
 
-    private fun parseResponse(body: String): String? {
+    private fun parseResponse(body: String): LlmTranslationResult? {
         return try {
             val json = JSONObject(body)
             val choices = json.optJSONArray("choices") ?: return null
             val first = choices.optJSONObject(0) ?: return null
             val message = first.optJSONObject("message") ?: return null
-            message.optString("content")?.trim()?.ifBlank { null }
+            val content = message.optString("content")?.trim()?.ifBlank { null } ?: return null
+            parseTranslationContent(content)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun parseTranslationContent(content: String): LlmTranslationResult? {
+        return try {
+            val json = JSONObject(content)
+            val translation = json.optString("translation")?.trim().orEmpty()
+            if (translation.isBlank()) {
+                AppLogger.log("LlmClient", "Missing translation field in response")
+                return null
+            }
+            val glossary = mutableMapOf<String, String>()
+            val glossaryJson = json.optJSONObject("glossary_used")
+            if (glossaryJson != null) {
+                for (key in glossaryJson.keys()) {
+                    val value = glossaryJson.optString(key).trim()
+                    if (key.isNotBlank() && value.isNotBlank()) {
+                        glossary[key] = value
+                    }
+                }
+            }
+            LlmTranslationResult(translation, glossary)
+        } catch (e: Exception) {
+            LlmTranslationResult(content, emptyMap())
         }
     }
 
@@ -123,11 +149,27 @@ class LlmClient(context: Context) {
         return appContext.assets.open(name).bufferedReader().use { it.readText() }
     }
 
+    private fun buildUserPayload(text: String, glossary: Map<String, String>): String {
+        val glossaryJson = JSONObject()
+        for ((key, value) in glossary) {
+            glossaryJson.put(key, value)
+        }
+        return JSONObject()
+            .put("text", text)
+            .put("glossary", glossaryJson)
+            .toString()
+    }
+
     companion object {
         private const val TIMEOUT_MS = 30_000
         private const val PROMPT_CONFIG_ASSET = "llm_prompts.json"
     }
 }
+
+data class LlmTranslationResult(
+    val translation: String,
+    val glossaryUsed: Map<String, String>
+)
 
 private data class LlmPromptConfig(
     val systemPrompt: String,

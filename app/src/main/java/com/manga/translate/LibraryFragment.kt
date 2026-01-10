@@ -25,6 +25,8 @@ class LibraryFragment : Fragment() {
     private lateinit var repository: LibraryRepository
     private lateinit var translationPipeline: TranslationPipeline
     private val translationStore = TranslationStore()
+    private val glossaryStore = GlossaryStore()
+    private lateinit var readingProgressStore: ReadingProgressStore
     private val folderAdapter = LibraryFolderAdapter(
         onClick = { openFolder(it.folder) },
         onDelete = { confirmDeleteFolder(it.folder) }
@@ -57,6 +59,7 @@ class LibraryFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         repository = LibraryRepository(requireContext())
         translationPipeline = TranslationPipeline(requireContext())
+        readingProgressStore = ReadingProgressStore(requireContext())
         binding.folderList.layoutManager = LinearLayoutManager(requireContext())
         binding.folderList.adapter = folderAdapter
         binding.folderImageList.layoutManager = LinearLayoutManager(requireContext())
@@ -212,24 +215,37 @@ class LibraryFragment : Fragment() {
             setFolderStatus(getString(R.string.folder_images_empty))
             return
         }
+        val pendingImages = images.filterNot { translationStore.translationFileFor(it).exists() }
+        if (pendingImages.isEmpty()) {
+            setFolderStatus(getString(R.string.translation_done))
+            return
+        }
         val llmClient = LlmClient(requireContext())
         if (!llmClient.isConfigured()) {
             setFolderStatus(getString(R.string.missing_api_settings))
             return
         }
         binding.folderTranslate.isEnabled = false
-        AppLogger.log("Library", "Start translating folder ${folder.name}, ${images.size} images")
+        AppLogger.log(
+            "Library",
+            "Start translating folder ${folder.name}, ${pendingImages.size} images"
+        )
         viewLifecycleOwner.lifecycleScope.launch {
             var failed = false
             try {
+                val glossary = glossaryStore.load(folder)
                 var translatedCount = 0
                 setFolderStatus(
-                    getString(R.string.folder_translation_progress, translatedCount, images.size),
+                    getString(
+                        R.string.folder_translation_progress,
+                        translatedCount,
+                        pendingImages.size
+                    ),
                     getString(R.string.detecting_bubbles)
                 )
-                for (image in images) {
+                for (image in pendingImages) {
                     val result = try {
-                        translationPipeline.translateImage(image) { progress ->
+                        translationPipeline.translateImage(image, glossary) { progress ->
                             binding.folderProgressRight.post { binding.folderProgressRight.text = progress }
                         }
                     } catch (e: Exception) {
@@ -242,9 +258,20 @@ class LibraryFragment : Fragment() {
                     } else {
                         failed = true
                     }
+                    if (glossary.isNotEmpty()) {
+                        glossaryStore.save(folder, glossary)
+                    }
                     setFolderStatus(
-                        getString(R.string.folder_translation_progress, translatedCount, images.size),
-                        if (translatedCount < images.size) getString(R.string.detecting_bubbles) else ""
+                        getString(
+                            R.string.folder_translation_progress,
+                            translatedCount,
+                            pendingImages.size
+                        ),
+                        if (translatedCount < pendingImages.size) {
+                            getString(R.string.detecting_bubbles)
+                        } else {
+                            ""
+                        }
                     )
                 }
                 setFolderStatus(
@@ -270,7 +297,8 @@ class LibraryFragment : Fragment() {
             return
         }
         AppLogger.log("Library", "Start reading ${folder.name}, ${images.size} images")
-        readingSessionViewModel.setFolder(folder, images)
+        val startIndex = readingProgressStore.load(folder)
+        readingSessionViewModel.setFolder(folder, images, startIndex)
         (activity as? MainActivity)?.switchToTab(MainPagerAdapter.READING_INDEX)
     }
 

@@ -37,6 +37,11 @@ class SettingsFragment : Fragment() {
         binding.apiUrlInput.setText(settings.apiUrl)
         binding.apiKeyInput.setText(settings.apiKey)
         binding.modelNameInput.setText(settings.modelName)
+        binding.textLayoutSwitch.isChecked = settingsStore.loadUseHorizontalText()
+        binding.textLayoutSwitch.setOnCheckedChangeListener { _, isChecked ->
+            settingsStore.saveUseHorizontalText(isChecked)
+            AppLogger.log("Settings", "Text layout set to ${if (isChecked) "horizontal" else "vertical"}")
+        }
 
         binding.saveButton.setOnClickListener {
             val url = binding.apiUrlInput.text?.toString()?.trim().orEmpty()

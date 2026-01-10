@@ -16,6 +16,7 @@ class TranslationPipeline(context: Context) {
 
     suspend fun translateImage(
         imageFile: File,
+        glossary: MutableMap<String, String>,
         onProgress: (String) -> Unit
     ): TranslationResult? = withContext(Dispatchers.Default) {
         if (!llmClient.isConfigured()) {
@@ -49,8 +50,15 @@ class TranslationPipeline(context: Context) {
             }
             index += 1
             onProgress(appContext.getString(R.string.translating_progress, index, total))
-            val translated = llmClient.translate(text) ?: text
-            bubbles.add(BubbleTranslation(bubbleId, det.rect, translated))
+            val translated = llmClient.translate(text, glossary)
+            if (translated != null) {
+                if (translated.glossaryUsed.isNotEmpty()) {
+                    glossary.putAll(translated.glossaryUsed)
+                }
+                bubbles.add(BubbleTranslation(bubbleId, det.rect, translated.translation))
+            } else {
+                bubbles.add(BubbleTranslation(bubbleId, det.rect, text))
+            }
         }
         AppLogger.log("Pipeline", "Translation finished for ${imageFile.name}")
         TranslationResult(imageFile.name, bitmap.width, bitmap.height, bubbles)

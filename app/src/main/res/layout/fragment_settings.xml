@@ -56,12 +56,22 @@
             android:inputType="text" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/text_layout_switch"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/text_layout_horizontal"
+        app:layout_constraintTop_toBottomOf="@id/model_name_layout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
     <Button
         android:id="@+id/save_button"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="@string/save_settings"
-        app:layout_constraintTop_toBottomOf="@id/model_name_layout"
+        app:layout_constraintTop_toBottomOf="@id/text_layout_switch"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="20dp" />

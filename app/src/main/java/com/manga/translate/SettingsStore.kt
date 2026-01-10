@@ -30,11 +30,22 @@ class SettingsStore(context: Context) {
             .apply()
     }
 
+    fun loadUseHorizontalText(): Boolean {
+        return prefs.getBoolean(KEY_HORIZONTAL_TEXT, false)
+    }
+
+    fun saveUseHorizontalText(enabled: Boolean) {
+        prefs.edit()
+            .putBoolean(KEY_HORIZONTAL_TEXT, enabled)
+            .apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "manga_translate_settings"
         private const val KEY_API_URL = "api_url"
         private const val KEY_API_KEY = "api_key"
         private const val KEY_MODEL_NAME = "model_name"
+        private const val KEY_HORIZONTAL_TEXT = "horizontal_text_layout"
         private const val DEFAULT_MODEL = "gpt-3.5-turbo"
     }
 }

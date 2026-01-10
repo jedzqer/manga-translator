@@ -19,6 +19,8 @@ class ReadingFragment : Fragment() {
     private val binding get() = _binding!!
     private val readingSessionViewModel: ReadingSessionViewModel by activityViewModels()
     private val translationStore = TranslationStore()
+    private lateinit var settingsStore: SettingsStore
+    private lateinit var readingProgressStore: ReadingProgressStore
     private var currentImageFile: java.io.File? = null
     private var currentTranslation: TranslationResult? = null
 
@@ -33,15 +35,24 @@ class ReadingFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        settingsStore = SettingsStore(requireContext())
+        readingProgressStore = ReadingProgressStore(requireContext())
         binding.translationOverlay.onTap = { x ->
             handleTap(x)
         }
+        applyTextLayoutSetting()
         readingSessionViewModel.images.observe(viewLifecycleOwner) {
             loadCurrentImage()
         }
         readingSessionViewModel.index.observe(viewLifecycleOwner) {
             loadCurrentImage()
+            persistReadingProgress()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyTextLayoutSetting()
     }
 
     override fun onDestroyView() {
@@ -147,6 +158,17 @@ class ReadingFragment : Fragment() {
                 readingSessionViewModel.next()
             }
         }
+    }
+
+    private fun applyTextLayoutSetting() {
+        val useHorizontal = settingsStore.loadUseHorizontalText()
+        binding.translationOverlay.setVerticalLayoutEnabled(!useHorizontal)
+    }
+
+    private fun persistReadingProgress() {
+        val folder = readingSessionViewModel.currentFolder.value ?: return
+        val index = readingSessionViewModel.index.value ?: return
+        readingProgressStore.save(folder, index)
     }
 
     private fun persistCurrentTranslation() {

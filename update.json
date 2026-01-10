@@ -1,6 +1,6 @@
 {
-  "versionCode": 2,
-  "versionName": "0.2.0",
-  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/0.2.0/app-release.apk",
-  "changelog": "新增自动更新功能"
+  "versionCode": 3,
+  "versionName": "0.3.0",
+  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/0.3.0/app-release.apk",
+  "changelog": "新增精细翻译功能，可以使用固定名词译名，新增竖式排版功能"
 }

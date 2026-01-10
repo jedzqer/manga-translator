@@ -16,11 +16,13 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var pagerAdapter: MainPagerAdapter
+    private lateinit var crashStateStore: CrashStateStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        crashStateStore = CrashStateStore(this)
 
         pagerAdapter = MainPagerAdapter(this)
         binding.mainPager.adapter = pagerAdapter
@@ -33,6 +35,7 @@ class MainActivity : AppCompatActivity() {
                 binding.mainPager.isUserInputEnabled = position != MainPagerAdapter.READING_INDEX
             }
         })
+        maybeShowCrashDialog()
         checkForUpdate()
     }
 
@@ -93,6 +96,46 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         } catch (e: ActivityNotFoundException) {
             AppLogger.log("MainActivity", "No activity to open url: $url", e)
+        }
+    }
+
+    private fun maybeShowCrashDialog() {
+        if (!crashStateStore.wasCrashedLastRun()) return
+        crashStateStore.clearCrashFlag()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.crash_dialog_title)
+            .setMessage(R.string.crash_dialog_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.crash_dialog_share) { _, _ ->
+                shareLatestLog()
+            }
+            .show()
+    }
+
+    private fun shareLatestLog() {
+        val latest = AppLogger.listLogFiles().firstOrNull()
+        if (latest == null || !latest.exists()) {
+            AppLogger.log("MainActivity", "No crash logs available to share")
+            android.widget.Toast.makeText(this, R.string.logs_empty, android.widget.Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this,
+            "$packageName.fileprovider",
+            latest
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(intent, getString(R.string.crash_dialog_share))
+        val manager = packageManager
+        if (chooser.resolveActivity(manager) != null) {
+            startActivity(chooser)
+        } else {
+            AppLogger.log("MainActivity", "No activity to share crash logs")
         }
     }
 
