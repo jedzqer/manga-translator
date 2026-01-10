@@ -142,7 +142,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun showAboutDialog() {
-        val versionName = BuildConfig.VERSION_NAME
+        val versionName = resolveVersionName()
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.about_dialog_title)
             .setMessage(getString(R.string.about_dialog_message, versionName))
@@ -154,6 +154,17 @@ class SettingsFragment : Fragment() {
                 openUrl(RELEASES_URL)
             }
             .show()
+    }
+
+    private fun resolveVersionName(): String {
+        val context = requireContext()
+        return try {
+            @Suppress("DEPRECATION")
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            info.versionName ?: BuildConfig.VERSION_NAME
+        } catch (e: Exception) {
+            BuildConfig.VERSION_NAME
+        }
     }
 
     private fun openUrl(url: String) {

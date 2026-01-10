@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showUpdateDialog(updateInfo: UpdateInfo) {
-        val versionLabel = updateInfo.versionName.ifBlank { updateInfo.versionCode.toString() }
+        val versionLabel = buildVersionLabel(updateInfo)
         val message = if (updateInfo.changelog.isNotBlank()) {
             getString(R.string.update_dialog_message, updateInfo.changelog)
         } else {
@@ -76,9 +76,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startDownload(updateInfo: UpdateInfo) {
+        val versionLabel = buildVersionLabel(updateInfo)
         val request = DownloadManager.Request(Uri.parse(updateInfo.apkUrl))
-            .setTitle(getString(R.string.update_download_title, updateInfo.versionName))
-            .setDescription(getString(R.string.update_download_description))
+            .setTitle(getString(R.string.update_download_title, versionLabel))
+            .setDescription(getString(R.string.update_download_description, versionLabel))
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
@@ -158,6 +159,26 @@ class MainActivity : AppCompatActivity() {
             if (l != r) return l.compareTo(r)
         }
         return 0
+    }
+
+    private fun buildVersionLabel(updateInfo: UpdateInfo): String {
+        val versionName = updateInfo.versionName.trim()
+        if (versionName.isNotBlank()) {
+            val urlVersion = extractVersionFromUrl(updateInfo.apkUrl)
+            if (urlVersion != null && isMoreSpecificVersion(urlVersion, versionName)) {
+                return urlVersion
+            }
+            return versionName
+        }
+        return if (updateInfo.versionCode > 0) updateInfo.versionCode.toString() else "unknown"
+    }
+
+    private fun extractVersionFromUrl(url: String): String? {
+        return Regex("(\\d+\\.\\d+\\.\\d+)").find(url)?.value
+    }
+
+    private fun isMoreSpecificVersion(candidate: String, current: String): Boolean {
+        return candidate.count { it == '.' } > current.count { it == '.' }
     }
 
     private fun extractVersionParts(version: String): List<Int> {
