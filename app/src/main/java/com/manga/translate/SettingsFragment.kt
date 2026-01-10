@@ -56,6 +56,10 @@ class SettingsFragment : Fragment() {
             AppLogger.log("Settings", "Share log file")
             showLogFilesDialog()
         }
+
+        binding.aboutButton.setOnClickListener {
+            showAboutDialog()
+        }
     }
 
     override fun onDestroyView() {
@@ -130,5 +134,35 @@ class SettingsFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.copy_logs, Toast.LENGTH_SHORT).show()
             }
             .show()
+    }
+
+    private fun showAboutDialog() {
+        val versionName = BuildConfig.VERSION_NAME
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.about_dialog_title)
+            .setMessage(getString(R.string.about_dialog_message, versionName))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.about_open_project) { _, _ ->
+                openUrl(PROJECT_URL)
+            }
+            .setNeutralButton(R.string.about_view_updates) { _, _ ->
+                openUrl(RELEASES_URL)
+            }
+            .show()
+    }
+
+    private fun openUrl(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+        val manager = requireContext().packageManager
+        if (intent.resolveActivity(manager) != null) {
+            startActivity(intent)
+        } else {
+            Toast.makeText(requireContext(), url, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    companion object {
+        private const val PROJECT_URL = "https://github.com/jedzqer/manga-translator"
+        private const val RELEASES_URL = "https://github.com/jedzqer/manga-translator/releases"
     }
 }

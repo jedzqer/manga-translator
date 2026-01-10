@@ -6,20 +6,44 @@ plugins {
 android {
     namespace = "com.manga.translate"
     compileSdk = 34
+    val storeFilePath = project.findProperty("STORE_FILE") as String?
+    val storePasswordProp = project.findProperty("STORE_PASSWORD") as String?
+    val keyAliasProp = project.findProperty("KEY_ALIAS") as String?
+    val keyPasswordProp = project.findProperty("KEY_PASSWORD") as String?
+    val hasSigning = !storeFilePath.isNullOrBlank() &&
+        !storePasswordProp.isNullOrBlank() &&
+        !keyAliasProp.isNullOrBlank() &&
+        !keyPasswordProp.isNullOrBlank()
 
     defaultConfig {
         applicationId = "com.manga.translate"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "beta-0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    val releaseSigning = if (hasSigning) {
+        signingConfigs.create("release") {
+            storeFile = file(storeFilePath!!)
+            storePassword = storePasswordProp
+            keyAlias = keyAliasProp
+            keyPassword = keyPasswordProp
+        }
+    } else {
+        null
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseSigning != null) {
+                signingConfig = releaseSigning
+            } else {
+                println("Release signing is not configured. Set STORE_FILE/STORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD.")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -37,6 +61,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         viewBinding = true
     }
 

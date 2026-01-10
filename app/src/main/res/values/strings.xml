@@ -61,4 +61,17 @@
     <string name="reading_no_translation">暂无翻译内容</string>
     <string name="image_translated">已翻译</string>
     <string name="image_not_translated">未翻译</string>
+    <string name="update_dialog_title">发现新版本 %1$s</string>
+    <string name="update_dialog_message">更新内容：\n%1$s</string>
+    <string name="update_dialog_message_default">发现新版本，是否下载更新？</string>
+    <string name="update_dialog_cancel">取消</string>
+    <string name="update_dialog_download">下载</string>
+    <string name="update_dialog_open_release">跳转项目链接</string>
+    <string name="update_download_title">正在下载更新 %1$s</string>
+    <string name="update_download_description">下载完成后可在通知栏安装</string>
+    <string name="about_button">更新和支持</string>
+    <string name="about_dialog_title">关于</string>
+    <string name="about_dialog_message">当前版本：%1$s</string>
+    <string name="about_open_project">打开项目页面</string>
+    <string name="about_view_updates">查看更新</string>
 </resources>
