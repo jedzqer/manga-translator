@@ -46,37 +46,43 @@ class LlmClient(context: Context) {
         if (!settings.isValid()) return null
         val endpoint = buildEndpoint(settings.apiUrl)
         val payload = buildPayload(text, glossary, settings.modelName, promptAsset, useJsonPayload)
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Authorization", "Bearer ${settings.apiKey}")
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
-            doOutput = true
-        }
-        return try {
-            connection.outputStream.use { output ->
-                output.write(payload.toString().toByteArray(Charsets.UTF_8))
+        for (attempt in 1..RETRY_COUNT) {
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Authorization", "Bearer ${settings.apiKey}")
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                doOutput = true
             }
-            val code = connection.responseCode
-            val stream = if (code in 200..299) {
-                connection.inputStream
-            } else {
-                connection.errorStream
-            }
-            val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
-            if (code !in 200..299) {
-                AppLogger.log("LlmClient", "HTTP $code: $body")
+            val result = try {
+                connection.outputStream.use { output ->
+                    output.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+                val code = connection.responseCode
+                val stream = if (code in 200..299) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream
+                }
+                val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                if (code !in 200..299) {
+                    AppLogger.log("LlmClient", "HTTP $code: $body")
+                    null
+                } else {
+                    parseResponseContent(body)
+                }
+            } catch (e: Exception) {
+                AppLogger.log("LlmClient", "Request failed (attempt $attempt)", e)
                 null
-            } else {
-                parseResponseContent(body)
+            } finally {
+                connection.disconnect()
             }
-        } catch (e: Exception) {
-            AppLogger.log("LlmClient", "Request failed", e)
-            null
-        } finally {
-            connection.disconnect()
+            if (result != null || attempt == RETRY_COUNT) {
+                return result
+            }
         }
+        return null
     }
 
     private fun buildEndpoint(baseUrl: String): String {
@@ -234,6 +240,7 @@ class LlmClient(context: Context) {
     companion object {
         private const val TIMEOUT_MS = 30_000
         private const val PROMPT_CONFIG_ASSET = "llm_prompts.json"
+        private const val RETRY_COUNT = 3
     }
 }
 
