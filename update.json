@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "0.3.1",
-  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/0.3.1/app-release.apk",
-  "changelog": "新增精细翻译功能，可以使用固定名词译名，新增竖式排版功能，添加了软件图标"
+  "versionCode": 5,
+  "versionName": "0.3.2",
+  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/0.3.2/app-release.apk",
+  "changelog": "修复Markdowm代码块解析错误的问题。缩小了软件体积"
 }

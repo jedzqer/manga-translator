@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -77,12 +78,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun startDownload(updateInfo: UpdateInfo) {
         val versionLabel = buildVersionLabel(updateInfo)
+        val safeVersion = versionLabel.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val fileName = Uri.parse(updateInfo.apkUrl).lastPathSegment
+            ?: "manga-translator-$safeVersion.apk"
         val request = DownloadManager.Request(Uri.parse(updateInfo.apkUrl))
             .setTitle(getString(R.string.update_download_title, versionLabel))
             .setDescription(getString(R.string.update_download_description, versionLabel))
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
         val downloadManager = getSystemService(DownloadManager::class.java)
         if (downloadManager == null) {
             AppLogger.log("MainActivity", "DownloadManager not available")

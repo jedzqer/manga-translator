@@ -5,7 +5,7 @@
     <application
         android:name=".MangaTranslateApp"
         android:allowBackup="true"
-        android:label="@string/app_name"
+        android:label="MT阅读器"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"

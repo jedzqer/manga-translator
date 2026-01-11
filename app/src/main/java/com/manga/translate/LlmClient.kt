@@ -106,7 +106,8 @@ class LlmClient(context: Context) {
 
     private fun parseTranslationContent(content: String): LlmTranslationResult? {
         return try {
-            val json = JSONObject(content)
+            val cleaned = stripCodeFence(content)
+            val json = JSONObject(cleaned)
             val translation = json.optString("translation")?.trim().orEmpty()
             if (translation.isBlank()) {
                 AppLogger.log("LlmClient", "Missing translation field in response")
@@ -158,6 +159,18 @@ class LlmClient(context: Context) {
             .put("text", text)
             .put("glossary", glossaryJson)
             .toString()
+    }
+
+    private fun stripCodeFence(content: String): String {
+        val trimmed = content.trim()
+        if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) {
+            return trimmed
+        }
+        var inner = trimmed.removePrefix("```").removeSuffix("```").trim()
+        if (inner.startsWith("json", ignoreCase = true)) {
+            inner = inner.removePrefix("json").trim()
+        }
+        return inner
     }
 
     companion object {
