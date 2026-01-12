@@ -55,7 +55,8 @@ class LibraryFragment : Fragment() {
     }
     private val ehViewerTreeKey = "ehviewer_tree_uri"
     private val fullTranslateKeyPrefix = "full_translate_enabled_"
-    private val tutorialUrl = "https://raw.githubusercontent.com/jedzqer/manga-translator/main/Tutorial/"
+    private val tutorialUrl =
+        "https://github.com/jedzqer/manga-translator/blob/main/Tutorial/简中教程.md"
 
     private val pickImages = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
