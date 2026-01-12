@@ -55,6 +55,7 @@ class LibraryFragment : Fragment() {
     }
     private val ehViewerTreeKey = "ehviewer_tree_uri"
     private val fullTranslateKeyPrefix = "full_translate_enabled_"
+    private val tutorialUrl = "https://raw.githubusercontent.com/jedzqer/manga-translator/main/Tutorial/"
 
     private val pickImages = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -93,6 +94,7 @@ class LibraryFragment : Fragment() {
 
         binding.addFolderFab.setOnClickListener { showCreateFolderDialog() }
         binding.importEhviewerButton.setOnClickListener { importFromEhViewer() }
+        binding.tutorialButton.setOnClickListener { openTutorial() }
         binding.folderBackButton.setOnClickListener { showFolderList() }
         binding.folderAddImages.setOnClickListener { pickImages.launch(arrayOf("image/*")) }
         binding.folderTranslate.setOnClickListener { translateFolder() }
@@ -138,6 +140,7 @@ class LibraryFragment : Fragment() {
         binding.libraryListContainer.visibility = View.VISIBLE
         binding.folderDetailContainer.visibility = View.GONE
         binding.addFolderFab.visibility = View.VISIBLE
+        binding.tutorialButton.visibility = View.VISIBLE
         binding.importEhviewerButton.visibility = View.VISIBLE
         clearFolderStatus()
         exitSelectionMode()
@@ -152,6 +155,7 @@ class LibraryFragment : Fragment() {
         binding.libraryListContainer.visibility = View.GONE
         binding.folderDetailContainer.visibility = View.VISIBLE
         binding.addFolderFab.visibility = View.GONE
+        binding.tutorialButton.visibility = View.GONE
         binding.importEhviewerButton.visibility = View.GONE
         exitSelectionMode()
         AppLogger.log("Library", "Opened folder ${folder.name}")
@@ -184,6 +188,16 @@ class LibraryFragment : Fragment() {
 
     private fun openFolder(folder: File) {
         showFolderDetail(folder)
+    }
+
+    private fun openTutorial() {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tutorialUrl))
+        val manager = requireContext().packageManager
+        if (intent.resolveActivity(manager) != null) {
+            startActivity(intent)
+        } else {
+            Toast.makeText(requireContext(), tutorialUrl, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showCreateFolderDialog() {
@@ -466,6 +480,11 @@ class LibraryFragment : Fragment() {
                 for (image in pendingImages) {
                     val result = try {
                         translationPipeline.translateImage(image, glossary) { }
+                    } catch (e: LlmRequestException) {
+                        AppLogger.log("Library", "Translation aborted for ${image.name}", e)
+                        showApiErrorDialog(e.errorCode)
+                        failed = true
+                        break
                     } catch (e: Exception) {
                         AppLogger.log("Library", "Translation failed for ${image.name}", e)
                         null
@@ -491,6 +510,7 @@ class LibraryFragment : Fragment() {
                         translatedCount,
                         pendingImages.size
                     )
+                    if (failed) break
                 }
                 setFolderStatus(
                     if (failed) getString(R.string.translation_failed) else getString(R.string.translation_done)
@@ -592,6 +612,8 @@ class LibraryFragment : Fragment() {
                                         glossary,
                                         "llm_prompts_FullTrans.json"
                                     ) { }
+                                } catch (e: LlmRequestException) {
+                                    throw e
                                 } catch (e: Exception) {
                                     AppLogger.log(
                                         "Library",
@@ -635,11 +657,23 @@ class LibraryFragment : Fragment() {
                     "Full-page translation ${if (failed) "completed with failures" else "completed"}: ${folder.name}"
                 )
                 loadImages(folder)
+            } catch (e: LlmRequestException) {
+                AppLogger.log("Library", "Full-page translation aborted", e)
+                showApiErrorDialog(e.errorCode)
+                setFolderStatus(getString(R.string.translation_failed))
             } finally {
                 binding.folderTranslate.isEnabled = true
                 TranslationKeepAliveService.stop(requireContext())
             }
         }
+    }
+
+    private fun showApiErrorDialog(errorCode: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.api_request_failed_title)
+            .setMessage(getString(R.string.api_request_failed_message, errorCode))
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun startReading() {

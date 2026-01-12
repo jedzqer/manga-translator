@@ -233,6 +233,17 @@
         android:layout_margin="4dp" />
 
     <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/tutorial_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/tutorial_button"
+        android:textAllCaps="false"
+        app:layout_constraintBottom_toTopOf="@id/import_ehviewer_button"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="4dp"
+        android:layout_marginBottom="12dp" />
+
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/import_ehviewer_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

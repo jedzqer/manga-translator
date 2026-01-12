@@ -36,6 +36,13 @@ class LlmClient(context: Context) {
             ?.let { parseGlossaryContent(it) }
     }
 
+    suspend fun fetchModelList(
+        apiUrl: String,
+        apiKey: String
+    ): List<String> = withContext(Dispatchers.IO) {
+        requestModelList(apiUrl, apiKey)
+    }
+
     private fun requestContent(
         text: String,
         glossary: Map<String, String>,
@@ -46,6 +53,8 @@ class LlmClient(context: Context) {
         if (!settings.isValid()) return null
         val endpoint = buildEndpoint(settings.apiUrl)
         val payload = buildPayload(text, glossary, settings.modelName, promptAsset, useJsonPayload)
+        var lastErrorCode: String? = null
+        var lastErrorBody: String? = null
         for (attempt in 1..RETRY_COUNT) {
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -68,18 +77,33 @@ class LlmClient(context: Context) {
                 val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
                 if (code !in 200..299) {
                     AppLogger.log("LlmClient", "HTTP $code: $body")
+                    lastErrorCode = "HTTP $code"
+                    lastErrorBody = body
                     null
                 } else {
-                    parseResponseContent(body)
+                    val content = parseResponseContent(body)
+                    if (content == null) {
+                        AppLogger.log("LlmClient", "Empty or invalid response content")
+                        lastErrorCode = "INVALID_RESPONSE"
+                        lastErrorBody = body
+                    }
+                    content
                 }
             } catch (e: Exception) {
                 AppLogger.log("LlmClient", "Request failed (attempt $attempt)", e)
+                lastErrorCode = "NETWORK_ERROR"
                 null
             } finally {
                 connection.disconnect()
             }
             if (result != null || attempt == RETRY_COUNT) {
-                return result
+                if (result != null) {
+                    return result
+                }
+                if (lastErrorCode != null) {
+                    throw LlmRequestException(lastErrorCode, lastErrorBody)
+                }
+                return null
             }
         }
         return null
@@ -91,6 +115,15 @@ class LlmClient(context: Context) {
             trimmed.endsWith("/v1/chat/completions") -> trimmed
             trimmed.endsWith("/v1") -> "$trimmed/chat/completions"
             else -> "$trimmed/v1/chat/completions"
+        }
+    }
+
+    private fun buildModelsEndpoint(baseUrl: String): String {
+        val trimmed = baseUrl.trimEnd('/')
+        return when {
+            trimmed.endsWith("/v1/models") -> trimmed
+            trimmed.endsWith("/v1") -> "$trimmed/models"
+            else -> "$trimmed/v1/models"
         }
     }
 
@@ -189,6 +222,82 @@ class LlmClient(context: Context) {
         }
     }
 
+    private fun requestModelList(apiUrl: String, apiKey: String): List<String> {
+        if (apiUrl.isBlank()) {
+            throw LlmRequestException("MISSING_URL")
+        }
+        val endpoint = buildModelsEndpoint(apiUrl)
+        var lastErrorCode: String? = null
+        var lastErrorBody: String? = null
+        for (attempt in 1..RETRY_COUNT) {
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Content-Type", "application/json")
+                if (apiKey.isNotBlank()) {
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                }
+                connectTimeout = MODEL_LIST_TIMEOUT_MS
+                readTimeout = MODEL_LIST_TIMEOUT_MS
+            }
+            val result = try {
+                val code = connection.responseCode
+                val stream = if (code in 200..299) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream
+                }
+                val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                if (code !in 200..299) {
+                    AppLogger.log("LlmClient", "Model list HTTP $code: $body")
+                    lastErrorCode = "HTTP $code"
+                    lastErrorBody = body
+                    null
+                } else {
+                    val models = parseModelList(body)
+                    if (models.isEmpty()) {
+                        lastErrorCode = "EMPTY_RESPONSE"
+                        lastErrorBody = body
+                    }
+                    models
+                }
+            } catch (e: Exception) {
+                AppLogger.log("LlmClient", "Model list request failed (attempt $attempt)", e)
+                lastErrorCode = "NETWORK_ERROR"
+                null
+            } finally {
+                connection.disconnect()
+            }
+            if (!result.isNullOrEmpty() || attempt == RETRY_COUNT) {
+                if (!result.isNullOrEmpty()) {
+                    return result
+                }
+                if (lastErrorCode != null) {
+                    throw LlmRequestException(lastErrorCode, lastErrorBody)
+                }
+                return emptyList()
+            }
+        }
+        return emptyList()
+    }
+
+    private fun parseModelList(body: String): List<String> {
+        return try {
+            val json = JSONObject(body)
+            val data = json.optJSONArray("data") ?: return emptyList()
+            val models = ArrayList<String>(data.length())
+            for (i in 0 until data.length()) {
+                val id = data.optJSONObject(i)?.optString("id")?.trim().orEmpty()
+                if (id.isNotBlank()) {
+                    models.add(id)
+                }
+            }
+            models
+        } catch (e: Exception) {
+            AppLogger.log("LlmClient", "Model list parse failed", e)
+            emptyList()
+        }
+    }
+
     private fun getPromptConfig(name: String): LlmPromptConfig {
         return promptCache.getOrPut(name) { loadPromptConfig(name) }
     }
@@ -239,10 +348,16 @@ class LlmClient(context: Context) {
 
     companion object {
         private const val TIMEOUT_MS = 30_000
+        private const val MODEL_LIST_TIMEOUT_MS = 60_000
         private const val PROMPT_CONFIG_ASSET = "llm_prompts.json"
         private const val RETRY_COUNT = 3
     }
 }
+
+class LlmRequestException(
+    val errorCode: String,
+    val responseBody: String? = null
+) : Exception("LLM request failed: $errorCode")
 
 data class LlmTranslationResult(
     val translation: String,

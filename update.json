@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "1.0.0",
+  "versionCode": 8,
+  "versionName": "1.1.0",
   "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/1.0.0/app-release.apk",
-  "changelog": "添加通知显示，新增全文速译、重译功能，新增并发翻译，添加从EhViewer的下载目录中导入漫画的功能。"
+  "changelog": "支持HTTP，添加教程页面，优化了体验细节。"
 }

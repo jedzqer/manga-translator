@@ -41,14 +41,19 @@ class FloatingTranslationView @JvmOverloads constructor(
     private var scaleX = 1f
     private var scaleY = 1f
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val swipeThreshold = touchSlop * 2f
     private var downX = 0f
     private var downY = 0f
+    private var startX = 0f
+    private var startY = 0f
     private var dragging = false
     private var activeId: Int? = null
     private var verticalLayoutEnabled = true
+    private var swipeTriggered = false
 
     var onOffsetChanged: ((Float, Float) -> Unit)? = null
     var onTap: ((Float) -> Unit)? = null
+    var onSwipe: ((Int) -> Unit)? = null
 
     init {
         isClickable = true
@@ -103,27 +108,39 @@ class FloatingTranslationView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                downX = event.x
-                downY = event.y
+                startX = event.x
+                startY = event.y
+                downX = startX
+                downY = startY
                 activeId = findBubbleAt(event.x, event.y)
                 dragging = false
+                swipeTriggered = false
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                val dx = event.x - downX
-                val dy = event.y - downY
-                if (!dragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
-                    dragging = true
-                }
-                if (dragging) {
-                    updateOffset(dx, dy)
-                    downX = event.x
-                    downY = event.y
+                if (activeId != null) {
+                    val dx = event.x - downX
+                    val dy = event.y - downY
+                    if (!dragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
+                        dragging = true
+                    }
+                    if (dragging) {
+                        updateOffset(dx, dy)
+                        downX = event.x
+                        downY = event.y
+                    }
+                } else if (!swipeTriggered) {
+                    val dx = event.x - startX
+                    val dy = event.y - startY
+                    if (abs(dx) > swipeThreshold && abs(dx) > abs(dy) * 1.3f) {
+                        swipeTriggered = true
+                        onSwipe?.invoke(if (dx > 0f) 1 else -1)
+                    }
                 }
                 return true
             }
             MotionEvent.ACTION_UP -> {
-                if (!dragging) {
+                if (!dragging && !swipeTriggered) {
                     onTap?.invoke(event.x)
                     performClick()
                 }

@@ -12,8 +12,14 @@
     <string name="max_concurrency_hint">最大并发数 (1-50)</string>
     <string name="text_layout_horizontal">漫画使用横向排版</string>
     <string name="save_settings">保存设置</string>
+    <string name="fetch_models">获取模型列表</string>
+    <string name="fetch_models_title">模型列表</string>
+    <string name="fetch_models_loading">正在获取模型列表…</string>
+    <string name="fetch_models_failed_title">获取模型列表失败</string>
+    <string name="fetch_models_failed_message">请求失败（%1$s）</string>
     <string name="settings_saved">设置已保存</string>
     <string name="api_settings_note">示例URL：https://api.openai.com/v1</string>
+    <string name="api_url_required">请先填写 API 地址</string>
     <string name="missing_api_settings">请先在设置中填写 API 地址与 Key</string>
     <string name="view_logs">查看日志</string>
     <string name="share_logs">分享日志</string>
@@ -24,6 +30,7 @@
     <string name="copy_logs">复制日志</string>
     <string name="logs_empty">暂无日志</string>
     <string name="library_title">漫画库</string>
+    <string name="tutorial_button">使用教程</string>
     <string name="create_folder">新建文件夹</string>
     <string name="import_ehviewer">从 EhViewer 导入</string>
     <string name="folder_name_hint">文件夹名称</string>
@@ -68,6 +75,8 @@
     <string name="ehviewer_import_done">已导入 %1$d 张图片</string>
     <string name="translation_done">翻译完成</string>
     <string name="translation_failed">翻译失败</string>
+    <string name="api_request_failed_title">API 调用失败</string>
+    <string name="api_request_failed_message">请求失败（%1$s），翻译已终止。</string>
     <string name="translation_keepalive_channel">后台翻译</string>
     <string name="translation_keepalive_title">翻译进行中</string>
     <string name="translation_keepalive_message">保持后台运行，请勿关闭应用</string>

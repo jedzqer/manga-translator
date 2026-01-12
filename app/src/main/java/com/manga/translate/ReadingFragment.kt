@@ -44,6 +44,9 @@ class ReadingFragment : Fragment() {
         binding.translationOverlay.onTap = { x ->
             handleTap(x)
         }
+        binding.translationOverlay.onSwipe = { direction ->
+            handleSwipe(direction)
+        }
         applyTextLayoutSetting()
         readingSessionViewModel.images.observe(viewLifecycleOwner) {
             loadCurrentImage()
@@ -57,6 +60,12 @@ class ReadingFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         applyTextLayoutSetting()
+        (activity as? MainActivity)?.setPagerSwipeEnabled(false)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        (activity as? MainActivity)?.setPagerSwipeEnabled(true)
     }
 
     override fun onDestroyView() {
@@ -167,6 +176,16 @@ class ReadingFragment : Fragment() {
                 persistCurrentTranslation()
                 readingSessionViewModel.next()
             }
+        }
+    }
+
+    private fun handleSwipe(direction: Int) {
+        if (direction == 0) return
+        persistCurrentTranslation()
+        if (direction > 0) {
+            readingSessionViewModel.prev()
+        } else {
+            readingSessionViewModel.next()
         }
     }
 

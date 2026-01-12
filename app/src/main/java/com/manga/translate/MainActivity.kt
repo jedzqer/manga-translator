@@ -38,7 +38,8 @@ class MainActivity : AppCompatActivity() {
 
         pagerAdapter = MainPagerAdapter(this)
         binding.mainPager.adapter = pagerAdapter
-        binding.mainPager.isUserInputEnabled = true
+        binding.mainPager.isUserInputEnabled =
+            binding.mainPager.currentItem != MainPagerAdapter.READING_INDEX
         TabLayoutMediator(binding.mainTabs, binding.mainPager) { tab, position ->
             tab.setText(pagerAdapter.getTitleRes(position))
         }.attach()
@@ -54,6 +55,10 @@ class MainActivity : AppCompatActivity() {
 
     fun switchToTab(index: Int) {
         binding.mainPager.setCurrentItem(index, true)
+    }
+
+    fun setPagerSwipeEnabled(enabled: Boolean) {
+        binding.mainPager.isUserInputEnabled = enabled
     }
 
     private fun checkForUpdate() {

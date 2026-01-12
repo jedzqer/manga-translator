@@ -13,7 +13,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.manga.translate.databinding.FragmentSettingsBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class SettingsFragment : Fragment() {
@@ -58,6 +62,10 @@ class SettingsFragment : Fragment() {
             }
             AppLogger.log("Settings", "API settings saved")
             Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show()
+        }
+
+        binding.fetchModelsButton.setOnClickListener {
+            fetchModelList()
         }
 
         binding.viewLogsButton.setOnClickListener {
@@ -161,6 +169,57 @@ class SettingsFragment : Fragment() {
             .setNeutralButton(R.string.about_view_updates) { _, _ ->
                 openUrl(RELEASES_URL)
             }
+            .show()
+    }
+
+    private fun fetchModelList() {
+        val apiUrl = binding.apiUrlInput.text?.toString()?.trim().orEmpty()
+        val apiKey = binding.apiKeyInput.text?.toString()?.trim().orEmpty()
+        if (apiUrl.isBlank()) {
+            Toast.makeText(requireContext(), R.string.api_url_required, Toast.LENGTH_SHORT).show()
+            return
+        }
+        binding.fetchModelsButton.isEnabled = false
+        val loadingDialog = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.fetch_models_title)
+            .setMessage(R.string.fetch_models_loading)
+            .setCancelable(false)
+            .show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val models = withContext(Dispatchers.IO) {
+                    LlmClient(requireContext()).fetchModelList(apiUrl, apiKey)
+                }
+                if (models.isEmpty()) {
+                    showModelFetchError("EMPTY_RESPONSE")
+                } else {
+                    showModelSelectionDialog(models)
+                }
+            } catch (e: LlmRequestException) {
+                showModelFetchError(e.errorCode)
+            } finally {
+                loadingDialog.dismiss()
+                binding.fetchModelsButton.isEnabled = true
+            }
+        }
+    }
+
+    private fun showModelSelectionDialog(models: List<String>) {
+        val items = models.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.fetch_models_title)
+            .setItems(items) { _, which ->
+                binding.modelNameInput.setText(items[which])
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showModelFetchError(code: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.fetch_models_failed_title)
+            .setMessage(getString(R.string.fetch_models_failed_message, code))
+            .setPositiveButton(android.R.string.ok, null)
             .show()
     }
 
