@@ -9,11 +9,16 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
+import androidx.core.app.NotificationCompat
 
 class TranslationKeepAliveService : Service() {
+    private var wakeLock: PowerManager.WakeLock? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        acquireWakeLock()
         startForeground(
             NOTIFICATION_ID,
             buildNotification(
@@ -28,7 +33,29 @@ class TranslationKeepAliveService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "MangaTranslator:TranslationKeepAlive"
+        ).apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+            }
+        }
+        wakeLock = null
     }
 
     companion object {
@@ -83,7 +110,7 @@ class TranslationKeepAliveService : Service() {
                 openIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            val builder = Notification.Builder(context, CHANNEL_ID)
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_upload)
                 .setContentTitle(context.getString(R.string.translation_keepalive_title))
                 .setContentText(content)

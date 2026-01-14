@@ -67,7 +67,12 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val updateInfo = UpdateChecker.fetchUpdateInfo()
             if (updateInfo == null) return@launch
-            if (!isNewerVersion(updateInfo.versionName, BuildConfig.VERSION_NAME)) return@launch
+            AppLogger.log(
+                "UpdateChecker",
+                "Local version=${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}), " +
+                    "remote version=${updateInfo.versionName} (${updateInfo.versionCode})"
+            )
+            if (!isNewerVersion(updateInfo)) return@launch
             if (isFinishing || isDestroyed) return@launch
             showUpdateDialog(updateInfo)
         }
@@ -166,20 +171,10 @@ class MainActivity : AppCompatActivity() {
         private var hasCheckedUpdate = false
     }
 
-    private fun isNewerVersion(remote: String, local: String): Boolean {
-        return compareVersionName(remote, local) > 0
-    }
-
-    private fun compareVersionName(left: String, right: String): Int {
-        val leftParts = extractVersionParts(left)
-        val rightParts = extractVersionParts(right)
-        val maxSize = maxOf(leftParts.size, rightParts.size)
-        for (i in 0 until maxSize) {
-            val l = leftParts.getOrElse(i) { 0 }
-            val r = rightParts.getOrElse(i) { 0 }
-            if (l != r) return l.compareTo(r)
-        }
-        return 0
+    private fun isNewerVersion(updateInfo: UpdateInfo): Boolean {
+        val remoteCode = updateInfo.versionCode
+        if (remoteCode <= 0) return false
+        return remoteCode > BuildConfig.VERSION_CODE
     }
 
     private fun buildVersionLabel(updateInfo: UpdateInfo): String {
@@ -200,15 +195,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun isMoreSpecificVersion(candidate: String, current: String): Boolean {
         return candidate.count { it == '.' } > current.count { it == '.' }
-    }
-
-    private fun extractVersionParts(version: String): List<Int> {
-        val matcher = Regex("\\d+").findAll(version)
-        val parts = mutableListOf<Int>()
-        for (match in matcher) {
-            parts.add(match.value.toIntOrNull() ?: 0)
-        }
-        return parts
     }
 
     private fun requestNotificationPermissionIfNeeded() {

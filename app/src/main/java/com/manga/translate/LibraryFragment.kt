@@ -39,6 +39,7 @@ class LibraryFragment : Fragment() {
     private lateinit var translationPipeline: TranslationPipeline
     private val translationStore = TranslationStore()
     private val glossaryStore = GlossaryStore()
+    private val ocrStore = OcrStore()
     private lateinit var readingProgressStore: ReadingProgressStore
     private val folderAdapter = LibraryFolderAdapter(
         onClick = { openFolder(it.folder) },
@@ -480,7 +481,7 @@ class LibraryFragment : Fragment() {
                 setFolderStatus(getString(R.string.translation_preparing))
                 for (image in pendingImages) {
                     val result = try {
-                        translationPipeline.translateImage(image, glossary) { }
+                        translationPipeline.translateImage(image, glossary, force) { }
                     } catch (e: LlmRequestException) {
                         AppLogger.log("Library", "Translation aborted for ${image.name}", e)
                         showApiErrorDialog(e.errorCode)
@@ -562,7 +563,7 @@ class LibraryFragment : Fragment() {
                 setFolderStatus(getString(R.string.translation_preparing))
                 for (image in pendingImages) {
                     val result = try {
-                        translationPipeline.ocrImage(image) { }
+                        translationPipeline.ocrImage(image, force) { }
                     } catch (e: Exception) {
                         AppLogger.log("Library", "OCR failed for ${image.name}", e)
                         null
@@ -749,6 +750,7 @@ class LibraryFragment : Fragment() {
                         failed = true
                     }
                     translationStore.translationFileFor(file).delete()
+                    ocrStore.ocrFileFor(file).delete()
                 }
                 if (failed) {
                     AppLogger.log("Library", "Delete selected images failed in ${folder.name}")

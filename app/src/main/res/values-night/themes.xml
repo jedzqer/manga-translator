@@ -3,6 +3,6 @@
         <item name="colorPrimary">@color/purple_500</item>
         <item name="colorPrimaryDark">@color/purple_700</item>
         <item name="colorAccent">@color/teal_200</item>
-        <item name="android:statusBarColor" tools:targetApi="l">@color/purple_700</item>
+        <item name="android:statusBarColor">@color/purple_700</item>
     </style>
 </resources>

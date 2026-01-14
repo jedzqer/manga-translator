@@ -94,7 +94,7 @@
     <string name="update_download_description">下载完成后可在通知栏安装（%1$s）</string>
     <string name="about_button">更新和支持</string>
     <string name="about_dialog_title">关于</string>
-    <string name="about_dialog_message">当前版本：%1$s</string>
+    <string name="about_dialog_message">当前版本：%1$s\n交流与反馈群：1080302768</string>
     <string name="about_open_project">打开项目页面</string>
     <string name="about_view_updates">查看更新</string>
     <string name="crash_dialog_title">检测到上次异常退出</string>

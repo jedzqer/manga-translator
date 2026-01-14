@@ -11,12 +11,14 @@ class TranslationPipeline(context: Context) {
     private val appContext = context.applicationContext
     private val llmClient = LlmClient(appContext)
     private val store = TranslationStore()
+    private val ocrStore = OcrStore()
     private var detector: BubbleDetector? = null
     private var ocr: MangaOcr? = null
 
     suspend fun translateImage(
         imageFile: File,
         glossary: MutableMap<String, String>,
+        forceOcr: Boolean,
         onProgress: (String) -> Unit
     ): TranslationResult? = withContext(Dispatchers.Default) {
         if (!llmClient.isConfigured()) {
@@ -24,28 +26,23 @@ class TranslationPipeline(context: Context) {
             AppLogger.log("Pipeline", "Missing API settings")
             return@withContext null
         }
-        val detector = getDetector() ?: return@withContext null
-        val ocr = getOcr() ?: return@withContext null
+        val page = ocrImage(imageFile, forceOcr, onProgress) ?: return@withContext null
         AppLogger.log("Pipeline", "Translate image ${imageFile.name}")
-        val bitmap = android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
-            ?: run {
-                AppLogger.log("Pipeline", "Failed to decode ${imageFile.name}")
-                return@withContext null
-            }
-        onProgress(appContext.getString(R.string.detecting_bubbles))
-        val detections = detector.detect(bitmap)
-        AppLogger.log("Pipeline", "Detected ${detections.size} bubbles in ${imageFile.name}")
-        if (detections.isEmpty()) {
-            return@withContext TranslationResult(imageFile.name, bitmap.width, bitmap.height, emptyList())
+        if (page.bubbles.isEmpty()) {
+            return@withContext TranslationResult(
+                imageFile.name,
+                page.width,
+                page.height,
+                emptyList()
+            )
         }
-        val bubbles = ArrayList<BubbleTranslation>(detections.size)
-        val total = detections.size.coerceAtLeast(1)
+        val bubbles = ArrayList<BubbleTranslation>(page.bubbles.size)
+        val total = page.bubbles.size.coerceAtLeast(1)
         var index = 0
-        for ((bubbleId, det) in detections.withIndex()) {
-            val crop = cropBitmap(bitmap, det.rect) ?: continue
-            val text = ocr.recognize(crop).trim()
+        for (bubble in page.bubbles) {
+            val text = bubble.text.trim()
             if (text.isBlank()) {
-                bubbles.add(BubbleTranslation(bubbleId, det.rect, ""))
+                bubbles.add(BubbleTranslation(bubble.id, bubble.rect, ""))
                 continue
             }
             index += 1
@@ -55,19 +52,27 @@ class TranslationPipeline(context: Context) {
                 if (translated.glossaryUsed.isNotEmpty()) {
                     glossary.putAll(translated.glossaryUsed)
                 }
-                bubbles.add(BubbleTranslation(bubbleId, det.rect, translated.translation))
+                bubbles.add(BubbleTranslation(bubble.id, bubble.rect, translated.translation))
             } else {
-                bubbles.add(BubbleTranslation(bubbleId, det.rect, text))
+                bubbles.add(BubbleTranslation(bubble.id, bubble.rect, text))
             }
         }
         AppLogger.log("Pipeline", "Translation finished for ${imageFile.name}")
-        TranslationResult(imageFile.name, bitmap.width, bitmap.height, bubbles)
+        TranslationResult(imageFile.name, page.width, page.height, bubbles)
     }
 
     suspend fun ocrImage(
         imageFile: File,
+        forceOcr: Boolean,
         onProgress: (String) -> Unit
     ): PageOcrResult? = withContext(Dispatchers.Default) {
+        if (!forceOcr) {
+            val cached = ocrStore.load(imageFile)
+            if (cached != null) {
+                AppLogger.log("Pipeline", "Reuse OCR for ${imageFile.name}")
+                return@withContext cached
+            }
+        }
         val detector = getDetector() ?: return@withContext null
         val ocr = getOcr() ?: return@withContext null
         val bitmap = android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
@@ -79,12 +84,14 @@ class TranslationPipeline(context: Context) {
         val detections = detector.detect(bitmap)
         AppLogger.log("Pipeline", "Detected ${detections.size} bubbles in ${imageFile.name}")
         if (detections.isEmpty()) {
-            return@withContext PageOcrResult(
+            val emptyResult = PageOcrResult(
                 imageFile,
                 bitmap.width,
                 bitmap.height,
                 emptyList()
             )
+            ocrStore.save(imageFile, emptyResult)
+            return@withContext emptyResult
         }
         val bubbles = ArrayList<OcrBubble>(detections.size)
         for ((bubbleId, det) in detections.withIndex()) {
@@ -92,7 +99,9 @@ class TranslationPipeline(context: Context) {
             val text = ocr.recognize(crop).trim()
             bubbles.add(OcrBubble(bubbleId, det.rect, text))
         }
-        PageOcrResult(imageFile, bitmap.width, bitmap.height, bubbles)
+        val result = PageOcrResult(imageFile, bitmap.width, bitmap.height, bubbles)
+        ocrStore.save(imageFile, result)
+        result
     }
 
     suspend fun translateFullPage(
@@ -143,7 +152,12 @@ class TranslationPipeline(context: Context) {
     }
 
     fun saveResult(imageFile: File, result: TranslationResult): File {
-        return store.save(imageFile, result)
+        val saved = store.save(imageFile, result)
+        val ocrFile = ocrStore.ocrFileFor(imageFile)
+        if (ocrFile.exists()) {
+            ocrFile.delete()
+        }
+        return saved
     }
 
     fun translationFileFor(imageFile: File): File {
