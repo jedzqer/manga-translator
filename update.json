@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "1.1.0",
-  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/1.1.0/app-release.apk",
-  "changelog": "支持HTTP，添加教程页面，优化了体验细节。"
+  "versionCode": 9,
+  "versionName": "1.2.0",
+  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/1.2.0/app-release.apk",
+  "changelog": "修复了总是提示更新的错误，尝试修复了不翻译的问题，完善了翻译效果，可以翻译非文字气泡内容，加强了翻译时的后台保活和进度保存"
 }
