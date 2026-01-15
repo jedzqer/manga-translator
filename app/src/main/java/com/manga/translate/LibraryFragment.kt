@@ -608,12 +608,16 @@ class LibraryFragment : Fragment() {
                 val semaphore = Semaphore(maxConcurrency)
                 val translatedCount = AtomicInteger(0)
                 val hasFailures = AtomicBoolean(false)
+                val requestFailed = AtomicBoolean(false)
                 val reportedModelError = AtomicBoolean(false)
                 setFolderStatus(getString(R.string.translation_preparing))
                 coroutineScope {
                     val tasks = ocrResults.map { page ->
                         async {
                             semaphore.withPermit {
+                                if (requestFailed.get()) {
+                                    return@withPermit
+                                }
                                 val result = try {
                                     translationPipeline.translateFullPage(
                                         page,
@@ -634,6 +638,7 @@ class LibraryFragment : Fragment() {
                                     }
                                     null
                                 } catch (e: LlmRequestException) {
+                                    requestFailed.set(true)
                                     throw e
                                 } catch (e: Exception) {
                                     AppLogger.log(
@@ -642,6 +647,9 @@ class LibraryFragment : Fragment() {
                                         e
                                     )
                                     null
+                                }
+                                if (requestFailed.get()) {
+                                    return@withPermit
                                 }
                                 if (result != null) {
                                     translationPipeline.saveResult(page.imageFile, result)

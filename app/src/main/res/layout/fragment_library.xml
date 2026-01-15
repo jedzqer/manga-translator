@@ -55,12 +55,14 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            style="?android:attr/buttonBarStyle">
 
             <Button
                 android:id="@+id/folder_back_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/folder_back" />
 
             <TextView
@@ -78,13 +80,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="12dp"
+            style="?android:attr/buttonBarStyle">
 
             <Button
                 android:id="@+id/folder_add_images"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/folder_add_images" />
 
             <Button
@@ -92,6 +96,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/folder_translate"
                 android:layout_marginStart="8dp" />
 
@@ -100,6 +105,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/folder_read"
                 android:layout_marginStart="8dp" />
         </LinearLayout>
@@ -171,13 +177,15 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginTop="8dp"
-            android:visibility="gone">
+            android:visibility="gone"
+            style="?android:attr/buttonBarStyle">
 
             <Button
                 android:id="@+id/folder_select_all"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/select_all" />
 
             <Button
@@ -186,6 +194,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/delete_selected" />
 
             <Button
@@ -194,6 +203,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/cancel_selection" />
 
             <Button
@@ -202,6 +212,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
+                style="?android:attr/buttonBarButtonStyle"
                 android:text="@string/retranslate_selected" />
         </LinearLayout>
 

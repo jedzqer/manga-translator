@@ -37,6 +37,7 @@ class FloatingTranslationView @JvmOverloads constructor(
     private var imageWidth = 0
     private var imageHeight = 0
     private val displayRect = RectF()
+    private val bubbleRect = RectF()
     private val offsets = mutableMapOf<Int, Pair<Float, Float>>()
     private var scaleX = 1f
     private var scaleY = 1f
@@ -95,13 +96,13 @@ class FloatingTranslationView @JvmOverloads constructor(
         for (bubble in bubbles) {
             if (bubble.text.isBlank()) continue
             val offset = offsets[bubble.id] ?: 0f to 0f
-            val rect = RectF(
+            bubbleRect.set(
                 displayRect.left + (bubble.rect.left + offset.first) * scaleX,
                 displayRect.top + (bubble.rect.top + offset.second) * scaleY,
                 displayRect.left + (bubble.rect.right + offset.first) * scaleX,
                 displayRect.top + (bubble.rect.bottom + offset.second) * scaleY
             )
-            drawBubble(canvas, bubble.text, rect)
+            drawBubble(canvas, bubble.text, bubbleRect)
         }
     }
 

@@ -45,7 +45,7 @@ class TranslationKeepAliveService : Service() {
             "MangaTranslator:TranslationKeepAlive"
         ).apply {
             setReferenceCounted(false)
-            acquire()
+            acquire(WAKELOCK_TIMEOUT_MS)
         }
     }
 
@@ -62,6 +62,7 @@ class TranslationKeepAliveService : Service() {
         private const val CHANNEL_ID = "translation_keepalive"
         private const val NOTIFICATION_ID = 1001
         private const val NOTIFICATION_REQUEST_CODE = 0
+        private const val WAKELOCK_TIMEOUT_MS = 60 * 60 * 1000L
 
         fun start(context: Context) {
             val intent = Intent(context, TranslationKeepAliveService::class.java)

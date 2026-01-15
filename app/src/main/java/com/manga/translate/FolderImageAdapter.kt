@@ -16,13 +16,19 @@ class FolderImageAdapter(
     private var selectionMode = false
 
     fun submit(list: List<ImageItem>) {
+        val oldSize = items.size
         items.clear()
         items.addAll(list)
         if (selectionMode) {
             val validPaths = items.map { it.file.absolutePath }.toHashSet()
             selectedPaths.retainAll(validPaths)
         }
-        notifyDataSetChanged()
+        if (oldSize > 0) {
+            notifyItemRangeRemoved(0, oldSize)
+        }
+        if (items.isNotEmpty()) {
+            notifyItemRangeInserted(0, items.size)
+        }
     }
 
     fun setSelectionMode(enabled: Boolean) {
@@ -30,7 +36,9 @@ class FolderImageAdapter(
         if (!selectionMode) {
             selectedPaths.clear()
         }
-        notifyDataSetChanged()
+        if (items.isNotEmpty()) {
+            notifyItemRangeChanged(0, items.size)
+        }
     }
 
     fun toggleSelection(file: File) {
@@ -53,12 +61,16 @@ class FolderImageAdapter(
         for (item in items) {
             selectedPaths.add(item.file.absolutePath)
         }
-        notifyDataSetChanged()
+        if (items.isNotEmpty()) {
+            notifyItemRangeChanged(0, items.size)
+        }
     }
 
     fun clearSelection() {
         selectedPaths.clear()
-        notifyDataSetChanged()
+        if (items.isNotEmpty()) {
+            notifyItemRangeChanged(0, items.size)
+        }
     }
 
     fun getSelectedFiles(): List<File> {

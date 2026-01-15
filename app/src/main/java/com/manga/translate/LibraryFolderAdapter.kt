@@ -13,9 +13,15 @@ class LibraryFolderAdapter(
     private var deletePosition: Int? = null
 
     fun submit(list: List<FolderItem>) {
+        val oldSize = items.size
         items.clear()
         items.addAll(list)
-        notifyDataSetChanged()
+        if (oldSize > 0) {
+            notifyItemRangeRemoved(0, oldSize)
+        }
+        if (items.isNotEmpty()) {
+            notifyItemRangeInserted(0, items.size)
+        }
     }
 
     fun clearDeleteSelection() {

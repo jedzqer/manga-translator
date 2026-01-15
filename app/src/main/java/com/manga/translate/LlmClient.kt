@@ -1,7 +1,10 @@
 package com.manga.translate
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -44,7 +47,7 @@ class LlmClient(context: Context) {
         requestModelList(apiUrl, apiKey)
     }
 
-    private fun requestContent(
+    private suspend fun requestContent(
         text: String,
         glossary: Map<String, String>,
         promptAsset: String,
@@ -57,6 +60,7 @@ class LlmClient(context: Context) {
         var lastErrorCode: String? = null
         var lastErrorBody: String? = null
         for (attempt in 1..RETRY_COUNT) {
+            currentCoroutineContext().ensureActive()
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
@@ -96,6 +100,8 @@ class LlmClient(context: Context) {
                     }
                     content
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.log("LlmClient", "Request failed on $endpoint (attempt $attempt)", e)
                 lastErrorCode = "NETWORK_ERROR"
@@ -240,7 +246,7 @@ class LlmClient(context: Context) {
         }
     }
 
-    private fun requestModelList(apiUrl: String, apiKey: String): List<String> {
+    private suspend fun requestModelList(apiUrl: String, apiKey: String): List<String> {
         if (apiUrl.isBlank()) {
             throw LlmRequestException("MISSING_URL")
         }
@@ -248,6 +254,7 @@ class LlmClient(context: Context) {
         var lastErrorCode: String? = null
         var lastErrorBody: String? = null
         for (attempt in 1..RETRY_COUNT) {
+            currentCoroutineContext().ensureActive()
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Content-Type", "application/json")
@@ -281,6 +288,8 @@ class LlmClient(context: Context) {
                     }
                     models
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.log(
                     "LlmClient",
