@@ -46,12 +46,17 @@ class SettingsFragment : Fragment() {
         binding.textLayoutSwitch.isChecked = settingsStore.loadUseHorizontalText()
         val themeMode = settingsStore.loadThemeMode()
         updateThemeButton(themeMode)
+        val readingMode = settingsStore.loadReadingDisplayMode()
+        updateReadingDisplayButton(readingMode)
         binding.textLayoutSwitch.setOnCheckedChangeListener { _, isChecked ->
             settingsStore.saveUseHorizontalText(isChecked)
             AppLogger.log("Settings", "Text layout set to ${if (isChecked) "horizontal" else "vertical"}")
         }
         binding.themeButton.setOnClickListener {
             showThemeDialog()
+        }
+        binding.readingDisplayButton.setOnClickListener {
+            showReadingDisplayDialog()
         }
 
         binding.saveButton.setOnClickListener {
@@ -190,6 +195,29 @@ class SettingsFragment : Fragment() {
     private fun updateThemeButton(mode: ThemeMode) {
         val label = getString(mode.labelRes)
         binding.themeButton.text = getString(R.string.theme_setting_format, label)
+    }
+
+    private fun showReadingDisplayDialog() {
+        val modes = ReadingDisplayMode.entries
+        val labels = modes.map { getString(it.labelRes) }.toTypedArray()
+        val currentMode = settingsStore.loadReadingDisplayMode()
+        val checkedIndex = modes.indexOf(currentMode).coerceAtLeast(0)
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.reading_display_title)
+            .setSingleChoiceItems(labels, checkedIndex) { dialog, which ->
+                val selected = modes[which]
+                settingsStore.saveReadingDisplayMode(selected)
+                updateReadingDisplayButton(selected)
+                AppLogger.log("Settings", "Reading display mode set to ${selected.prefValue}")
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun updateReadingDisplayButton(mode: ReadingDisplayMode) {
+        val label = getString(mode.labelRes)
+        binding.readingDisplayButton.text = getString(R.string.reading_display_format, label)
     }
 
     private fun showAboutDialog() {

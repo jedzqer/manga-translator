@@ -14,6 +14,11 @@
     <string name="theme_setting_button">主题设置</string>
     <string name="theme_setting_title">主题设置</string>
     <string name="theme_setting_format">主题设置：%1$s</string>
+    <string name="reading_display_button">阅读设置</string>
+    <string name="reading_display_title">阅读显示</string>
+    <string name="reading_display_format">阅读显示：%1$s</string>
+    <string name="reading_display_fit_width">等宽显示</string>
+    <string name="reading_display_fit_height">等高显示</string>
     <string name="theme_follow_system">跟随系统</string>
     <string name="theme_dark">暗色</string>
     <string name="theme_light">白色</string>

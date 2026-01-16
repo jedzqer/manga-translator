@@ -63,6 +63,17 @@ class SettingsStore(context: Context) {
             .apply()
     }
 
+    fun loadReadingDisplayMode(): ReadingDisplayMode {
+        val saved = prefs.getString(KEY_READING_DISPLAY_MODE, ReadingDisplayMode.FIT_WIDTH.prefValue)
+        return ReadingDisplayMode.fromPref(saved)
+    }
+
+    fun saveReadingDisplayMode(mode: ReadingDisplayMode) {
+        prefs.edit()
+            .putString(KEY_READING_DISPLAY_MODE, mode.prefValue)
+            .apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "manga_translate_settings"
         private const val KEY_API_URL = "api_url"
@@ -71,6 +82,7 @@ class SettingsStore(context: Context) {
         private const val KEY_HORIZONTAL_TEXT = "horizontal_text_layout"
         private const val KEY_MAX_CONCURRENCY = "max_concurrency"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_READING_DISPLAY_MODE = "reading_display_mode"
         private const val DEFAULT_MODEL = "gpt-3.5-turbo"
         private const val DEFAULT_MAX_CONCURRENCY = 3
         private const val MIN_MAX_CONCURRENCY = 1

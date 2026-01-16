@@ -55,6 +55,7 @@ class FloatingTranslationView @JvmOverloads constructor(
     var onOffsetChanged: ((Float, Float) -> Unit)? = null
     var onTap: ((Float) -> Unit)? = null
     var onSwipe: ((Int) -> Unit)? = null
+    var onTransformTouch: ((MotionEvent) -> Boolean)? = null
 
     init {
         isClickable = true
@@ -90,6 +91,10 @@ class FloatingTranslationView @JvmOverloads constructor(
         return offsets.toMap()
     }
 
+    fun hasBubbleAt(x: Float, y: Float): Boolean {
+        return findBubbleAt(x, y) != null
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (bubbles.isEmpty() || imageWidth <= 0 || imageHeight <= 0) return
@@ -107,6 +112,17 @@ class FloatingTranslationView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        val transformHandled = onTransformTouch?.invoke(event) == true
+        if (transformHandled) {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN ||
+                event.actionMasked == MotionEvent.ACTION_POINTER_DOWN
+            ) {
+                dragging = false
+                activeId = null
+            }
+            swipeTriggered = true
+            return true
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 startX = event.x
