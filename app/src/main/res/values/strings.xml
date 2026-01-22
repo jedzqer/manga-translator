@@ -113,6 +113,14 @@
     <string name="translation_keepalive_message">保持后台运行，请勿关闭应用</string>
     <string name="reading_empty">请选择一个文件夹开始阅读</string>
     <string name="reading_page_info">%1$s  (%2$d/%3$d)</string>
+    <string name="reading_edit_bubbles">编辑气泡</string>
+    <string name="reading_confirm_edit">完成编辑</string>
+    <string name="reading_edit_bubble_title">编辑气泡内容</string>
+    <string name="reading_bubble_width_hint">宽%</string>
+    <string name="reading_bubble_height_hint">高%</string>
+    <string name="reading_add_bubble">添加气泡</string>
+    <string name="reading_empty_bubble_hint">留空则软件会自动在对应区域识别文字。</string>
+    <string name="reading_bubble_resize_done">确认</string>
     <string name="image_translated">已翻译</string>
     <string name="image_not_translated">未翻译</string>
     <string name="update_dialog_title">发现新版本 %1$s</string>

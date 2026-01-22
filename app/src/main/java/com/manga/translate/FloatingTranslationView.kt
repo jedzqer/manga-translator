@@ -32,12 +32,27 @@ class FloatingTranslationView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeWidth = resources.displayMetrics.density
     }
+    private val deletePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFE53935.toInt()
+        style = Paint.Style.STROKE
+        strokeWidth = resources.displayMetrics.density * 1.5f
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val resizePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF4FC3F7.toInt()
+        style = Paint.Style.STROKE
+        strokeWidth = resources.displayMetrics.density * 1.5f
+        strokeCap = Paint.Cap.ROUND
+    }
 
     private var bubbles: List<BubbleTranslation> = emptyList()
     private var imageWidth = 0
     private var imageHeight = 0
     private val displayRect = RectF()
     private val bubbleRect = RectF()
+    private val hitRect = RectF()
+    private val deleteRect = RectF()
+    private val resizeRect = RectF()
     private val offsets = mutableMapOf<Int, Pair<Float, Float>>()
     private var scaleX = 1f
     private var scaleY = 1f
@@ -51,11 +66,15 @@ class FloatingTranslationView @JvmOverloads constructor(
     private var activeId: Int? = null
     private var verticalLayoutEnabled = true
     private var swipeTriggered = false
+    private var editMode = false
 
     var onOffsetChanged: ((Float, Float) -> Unit)? = null
     var onTap: ((Float) -> Unit)? = null
     var onSwipe: ((Int) -> Unit)? = null
     var onTransformTouch: ((MotionEvent) -> Boolean)? = null
+    var onBubbleRemove: ((Int) -> Unit)? = null
+    var onBubbleTap: ((Int) -> Unit)? = null
+    var onBubbleResizeTap: ((Int) -> Unit)? = null
 
     init {
         isClickable = true
@@ -87,11 +106,20 @@ class FloatingTranslationView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setEditMode(enabled: Boolean) {
+        if (editMode == enabled) return
+        editMode = enabled
+        dragging = false
+        activeId = null
+        invalidate()
+    }
+
     fun getOffsets(): Map<Int, Pair<Float, Float>> {
         return offsets.toMap()
     }
 
     fun hasBubbleAt(x: Float, y: Float): Boolean {
+        if (!editMode) return false
         return findBubbleAt(x, y) != null
     }
 
@@ -99,15 +127,13 @@ class FloatingTranslationView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (bubbles.isEmpty() || imageWidth <= 0 || imageHeight <= 0) return
         for (bubble in bubbles) {
-            if (bubble.text.isBlank()) continue
-            val offset = offsets[bubble.id] ?: 0f to 0f
-            bubbleRect.set(
-                displayRect.left + (bubble.rect.left + offset.first) * scaleX,
-                displayRect.top + (bubble.rect.top + offset.second) * scaleY,
-                displayRect.left + (bubble.rect.right + offset.first) * scaleX,
-                displayRect.top + (bubble.rect.bottom + offset.second) * scaleY
-            )
+            if (bubble.text.isBlank() && !editMode) continue
+            updateBubbleRect(bubbleRect, bubble)
             drawBubble(canvas, bubble.text, bubbleRect)
+            if (editMode) {
+                drawDeleteIcon(canvas, bubbleRect)
+                drawResizeIcon(canvas, bubbleRect)
+            }
         }
     }
 
@@ -129,13 +155,13 @@ class FloatingTranslationView @JvmOverloads constructor(
                 startY = event.y
                 downX = startX
                 downY = startY
-                activeId = findBubbleAt(event.x, event.y)
+                activeId = if (editMode) findBubbleAt(event.x, event.y) else null
                 dragging = false
                 swipeTriggered = false
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (activeId != null) {
+                if (editMode && activeId != null) {
                     val dx = event.x - downX
                     val dy = event.y - downY
                     if (!dragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
@@ -158,6 +184,28 @@ class FloatingTranslationView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP -> {
                 if (!dragging && !swipeTriggered) {
+                    if (editMode) {
+                        val removeId = findRemoveTarget(event.x, event.y)
+                        if (removeId != null) {
+                            onBubbleRemove?.invoke(removeId)
+                            activeId = null
+                            return true
+                        }
+                        val resizeId = findResizeTarget(event.x, event.y)
+                        if (resizeId != null) {
+                            onBubbleResizeTap?.invoke(resizeId)
+                            activeId = null
+                            return true
+                        }
+                        val bubbleId = findBubbleAt(event.x, event.y)
+                        if (bubbleId != null) {
+                            onBubbleTap?.invoke(bubbleId)
+                            activeId = null
+                            return true
+                        }
+                        activeId = null
+                        return true
+                    }
                     onTap?.invoke(event.x)
                     performClick()
                 }
@@ -210,15 +258,49 @@ class FloatingTranslationView @JvmOverloads constructor(
     }
 
     private fun findBubbleAt(x: Float, y: Float): Int? {
-        if (bubbles.isEmpty() || imageWidth <= 0 || imageHeight <= 0) return null
+        if (!editMode || bubbles.isEmpty() || imageWidth <= 0 || imageHeight <= 0) return null
         for (i in bubbles.indices.reversed()) {
             val bubble = bubbles[i]
-            val offset = offsets[bubble.id] ?: 0f to 0f
-            val left = displayRect.left + (bubble.rect.left + offset.first) * scaleX
-            val top = displayRect.top + (bubble.rect.top + offset.second) * scaleY
-            val right = displayRect.left + (bubble.rect.right + offset.first) * scaleX
-            val bottom = displayRect.top + (bubble.rect.bottom + offset.second) * scaleY
-            if (x in left..right && y in top..bottom) {
+            updateBubbleRect(hitRect, bubble)
+            if (x in hitRect.left..hitRect.right && y in hitRect.top..hitRect.bottom) {
+                return bubble.id
+            }
+        }
+        return null
+    }
+
+    private fun updateBubbleRect(outRect: RectF, bubble: BubbleTranslation) {
+        val offset = offsets[bubble.id] ?: 0f to 0f
+        outRect.set(
+            displayRect.left + (bubble.rect.left + offset.first) * scaleX,
+            displayRect.top + (bubble.rect.top + offset.second) * scaleY,
+            displayRect.left + (bubble.rect.right + offset.first) * scaleX,
+            displayRect.top + (bubble.rect.bottom + offset.second) * scaleY
+        )
+    }
+
+    private fun findRemoveTarget(x: Float, y: Float): Int? {
+        if (!editMode || bubbles.isEmpty() || imageWidth <= 0 || imageHeight <= 0) return null
+        for (i in bubbles.indices.reversed()) {
+            val bubble = bubbles[i]
+            updateBubbleRect(hitRect, bubble)
+            if (!hitRect.contains(x, y)) continue
+            computeDeleteRect(hitRect, deleteRect)
+            if (deleteRect.contains(x, y)) {
+                return bubble.id
+            }
+        }
+        return null
+    }
+
+    private fun findResizeTarget(x: Float, y: Float): Int? {
+        if (!editMode || bubbles.isEmpty() || imageWidth <= 0 || imageHeight <= 0) return null
+        for (i in bubbles.indices.reversed()) {
+            val bubble = bubbles[i]
+            updateBubbleRect(hitRect, bubble)
+            if (!hitRect.contains(x, y)) continue
+            computeResizeRect(hitRect, resizeRect)
+            if (resizeRect.contains(x, y)) {
                 return bubble.id
             }
         }
@@ -233,6 +315,45 @@ class FloatingTranslationView @JvmOverloads constructor(
         canvas.drawRoundRect(padded, 6f, 6f, fillPaint)
         canvas.drawRoundRect(padded, 6f, 6f, strokePaint)
         drawTextInRect(canvas, text, padded)
+    }
+
+    private fun drawDeleteIcon(canvas: Canvas, rect: RectF) {
+        computeDeleteRect(rect, deleteRect)
+        if (deleteRect.width() <= 0f || deleteRect.height() <= 0f) return
+        canvas.drawLine(deleteRect.left, deleteRect.top, deleteRect.right, deleteRect.bottom, deletePaint)
+        canvas.drawLine(deleteRect.right, deleteRect.top, deleteRect.left, deleteRect.bottom, deletePaint)
+    }
+
+    private fun drawResizeIcon(canvas: Canvas, rect: RectF) {
+        computeResizeRect(rect, resizeRect)
+        if (resizeRect.width() <= 0f || resizeRect.height() <= 0f) return
+        val centerX = resizeRect.centerX()
+        val centerY = resizeRect.centerY()
+        val half = resizeRect.width() * 0.35f
+        canvas.drawLine(centerX - half, centerY, centerX + half, centerY, resizePaint)
+        canvas.drawLine(centerX, centerY - half, centerX, centerY + half, resizePaint)
+    }
+
+    private fun computeDeleteRect(source: RectF, outRect: RectF) {
+        val density = resources.displayMetrics.density
+        val size = (min(source.width(), source.height()) * 0.22f).coerceIn(8f * density, 16f * density)
+        val padding = (size * 0.2f).coerceAtLeast(2f * density)
+        val left = (source.right - size - padding).coerceAtLeast(source.left)
+        val top = (source.top + padding).coerceAtLeast(source.top)
+        val right = (left + size).coerceAtMost(source.right)
+        val bottom = (top + size).coerceAtMost(source.bottom)
+        outRect.set(left, top, right, bottom)
+    }
+
+    private fun computeResizeRect(source: RectF, outRect: RectF) {
+        val density = resources.displayMetrics.density
+        val size = (min(source.width(), source.height()) * 0.22f).coerceIn(8f * density, 16f * density)
+        val padding = (size * 0.2f).coerceAtLeast(2f * density)
+        val right = (source.right - padding).coerceAtMost(source.right)
+        val bottom = (source.bottom - padding).coerceAtMost(source.bottom)
+        val left = (right - size).coerceAtLeast(source.left)
+        val top = (bottom - size).coerceAtLeast(source.top)
+        outRect.set(left, top, right, bottom)
     }
 
     private fun drawTextInRect(canvas: Canvas, text: String, rect: RectF) {

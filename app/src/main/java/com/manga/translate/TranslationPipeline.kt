@@ -50,7 +50,10 @@ class TranslationPipeline(context: Context) {
             )
         }
         onProgress(appContext.getString(R.string.translating_bubbles))
-        val pageText = translatable.joinToString("\n") { "<b>${it.text}</b>" }
+        val pageText = translatable.joinToString("\n") { bubble ->
+            val text = normalizeOcrText(bubble.text, language)
+            "<b>$text</b>"
+        }
         val promptAsset = when (language) {
             TranslationLanguage.EN_TO_ZH -> "en-zh-llm_prompts.json"
             TranslationLanguage.JA_TO_ZH -> "llm_prompts.json"
@@ -191,7 +194,10 @@ class TranslationPipeline(context: Context) {
             )
         }
         onProgress(appContext.getString(R.string.translating_bubbles))
-        val pageText = translatable.joinToString("\n") { "<b>${it.text}</b>" }
+        val pageText = translatable.joinToString("\n") { bubble ->
+            val text = normalizeOcrText(bubble.text, language)
+            "<b>$text</b>"
+        }
         val translated = llmClient.translate(pageText, glossary, promptAsset)
         if (translated == null) {
             val fallback = page.bubbles.map { bubble ->
@@ -414,6 +420,14 @@ class TranslationPipeline(context: Context) {
             result[i] = matches[i]
         }
         return result
+    }
+
+    private fun normalizeOcrText(text: String, language: TranslationLanguage): String {
+        if (language != TranslationLanguage.EN_TO_ZH) return text
+        return text.replace('\r', ' ')
+            .replace('\n', ' ')
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 }
 

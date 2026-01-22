@@ -40,4 +40,110 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
+    <LinearLayout
+        android:id="@+id/reading_edit_controls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="12dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/reading_add_button"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="6dp"
+            android:background="#66000000"
+            android:contentDescription="@string/reading_add_bubble"
+            android:padding="4dp"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_input_add" />
+
+        <ImageButton
+            android:id="@+id/reading_edit_button"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="#66000000"
+            android:contentDescription="@string/reading_edit_bubbles"
+            android:padding="4dp"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_edit" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/reading_resize_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#CC000000"
+        android:orientation="vertical"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/reading_resize_row_width"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <SeekBar
+                android:id="@+id/reading_resize_width_slider"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="450" />
+
+            <EditText
+                android:id="@+id/reading_resize_width_input"
+                android:layout_width="64dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="#FFFFFFFF"
+                android:gravity="center"
+                android:hint="@string/reading_bubble_width_hint"
+                android:inputType="number"
+                android:maxLines="1"
+                android:padding="4dp"
+                android:textColor="#FF000000"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/reading_resize_row_height"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <SeekBar
+                android:id="@+id/reading_resize_height_slider"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="450" />
+
+            <EditText
+                android:id="@+id/reading_resize_height_input"
+                android:layout_width="64dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="#FFFFFFFF"
+                android:gravity="center"
+                android:hint="@string/reading_bubble_height_hint"
+                android:inputType="number"
+                android:maxLines="1"
+                android:padding="4dp"
+                android:textColor="#FF000000"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/reading_resize_confirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/reading_bubble_resize_done" />
+    </LinearLayout>
+
 </FrameLayout>
