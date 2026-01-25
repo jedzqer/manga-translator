@@ -67,11 +67,13 @@ class LibraryFragment : Fragment() {
         requireContext().getSharedPreferences("library_prefs", Context.MODE_PRIVATE)
     }
     private val ehViewerTreeKey = "ehviewer_tree_uri"
+    private val exportTreeKey = "export_tree_uri"
     private val fullTranslateKeyPrefix = "full_translate_enabled_"
     private val languageKeyPrefix = "translation_language_"
     private val tutorialUrl =
         "https://github.com/jedzqer/manga-translator/blob/main/Tutorial/简中教程.md"
     private var pendingExportAfterPermission = false
+    private var pendingExportAfterExportTreeSelection = false
 
     private val requestStoragePermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -102,6 +104,16 @@ class LibraryFragment : Fragment() {
     ) { uri ->
         if (uri != null) {
             handleEhViewerTreeSelection(uri)
+        }
+    }
+
+    private val pickExportTree = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            handleExportTreeSelection(uri)
+        } else {
+            pendingExportAfterExportTreeSelection = false
         }
     }
 
@@ -412,6 +424,10 @@ class LibraryFragment : Fragment() {
         return prefs.getString(ehViewerTreeKey, null)?.let(Uri::parse)
     }
 
+    private fun getExportTreeUri(): Uri? {
+        return prefs.getString(exportTreeKey, null)?.let(Uri::parse)
+    }
+
     private fun hasEhViewerPermission(uri: Uri): Boolean {
         val persisted = requireContext()
             .contentResolver
@@ -419,6 +435,15 @@ class LibraryFragment : Fragment() {
             .any { it.uri == uri && it.isReadPermission }
         val root = DocumentFile.fromTreeUri(requireContext(), uri)
         return persisted && root?.canRead() == true
+    }
+
+    private fun hasExportPermission(uri: Uri): Boolean {
+        val persisted = requireContext()
+            .contentResolver
+            .persistedUriPermissions
+            .any { it.uri == uri && it.isReadPermission && it.isWritePermission }
+        val root = DocumentFile.fromTreeUri(requireContext(), uri)
+        return persisted && root?.canWrite() == true
     }
 
     private fun isEhViewerTree(uri: Uri): Boolean {
@@ -436,9 +461,85 @@ class LibraryFragment : Fragment() {
                 "com.android.externalstorage.documents",
                 "primary:EhViewer/download"
             )
+        } catch (_: Exception) {
+            try {
+                DocumentsContract.buildTreeDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:EhViewer"
+                )
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun buildExportInitialUri(): Uri? {
+        return try {
+            DocumentsContract.buildTreeDocumentUri(
+                "com.android.externalstorage.documents",
+                "primary:Documents/manga-translator"
+            )
+        } catch (_: Exception) {
+            try {
+                DocumentsContract.buildTreeDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:Documents"
+                )
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun requestExportDirectoryPermission() {
+        pickExportTree.launch(buildExportInitialUri())
+    }
+
+    private fun handleExportTreeSelection(uri: Uri) {
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        try {
+            requireContext().contentResolver.takePersistableUriPermission(uri, flags)
+        } catch (e: SecurityException) {
+            AppLogger.log("Library", "Persist export permission failed", e)
+        }
+        prefs.edit().putString(exportTreeKey, uri.toString()).apply()
+        if (pendingExportAfterExportTreeSelection) {
+            pendingExportAfterExportTreeSelection = false
+            exportFolderInternal()
+        }
+    }
+
+    private fun resolveExportDirectory(
+        context: Context,
+        treeUri: Uri,
+        folderName: String
+    ): DocumentFile? {
+        val root = DocumentFile.fromTreeUri(context, treeUri) ?: return null
+        if (!root.canWrite()) {
+            return null
+        }
+        val existing = root.findFile(folderName)
+        return when {
+            existing == null -> root.createDirectory(folderName)
+            existing.isDirectory -> existing
+            else -> null
+        }
+    }
+
+    private fun buildExportPathHint(treeUri: Uri, folderName: String): String {
+        val docId = try {
+            DocumentsContract.getTreeDocumentId(treeUri)
         } catch (e: Exception) {
             null
         }
+        val base = docId?.let { id ->
+            if (id.startsWith("primary:")) {
+                "/storage/emulated/0/${id.removePrefix("primary:")}"
+            } else {
+                id
+            }
+        } ?: "所选目录"
+        return "$base/$folderName"
     }
 
     private fun isImageDocument(file: DocumentFile): Boolean {
@@ -754,7 +855,19 @@ class LibraryFragment : Fragment() {
     }
 
     private fun exportFolder() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val treeUri = getExportTreeUri()
+            if (treeUri == null || !hasExportPermission(treeUri)) {
+                pendingExportAfterExportTreeSelection = true
+                Toast.makeText(
+                    requireContext(),
+                    R.string.export_directory_required,
+                    Toast.LENGTH_LONG
+                ).show()
+                requestExportDirectoryPermission()
+                return
+            }
+        } else {
             val permission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
             val granted = ContextCompat.checkSelfPermission(
                 requireContext(),
@@ -778,6 +891,11 @@ class LibraryFragment : Fragment() {
             return
         }
         val appContext = requireContext().applicationContext
+        val exportTreeUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getExportTreeUri()?.takeIf { hasExportPermission(it) }
+        } else {
+            null
+        }
         val verticalLayoutEnabled = !settingsStore.loadUseHorizontalText()
         binding.folderExport.isEnabled = false
         TranslationKeepAliveService.start(
@@ -795,9 +913,25 @@ class LibraryFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             var exported = 0
             var failed = false
+            var exportDir: DocumentFile? = null
+            var exportDirReady = true
             try {
                 withContext(Dispatchers.IO) {
-                    ensureNoMediaFile(appContext, folder.name)
+                    if (exportTreeUri != null) {
+                        exportDir = resolveExportDirectory(appContext, exportTreeUri, folder.name)
+                        if (exportDir == null) {
+                            exportDirReady = false
+                        } else {
+                            ensureNoMediaFile(exportDir!!)
+                        }
+                    } else {
+                        ensureNoMediaFile(appContext, folder.name)
+                    }
+                }
+                if (!exportDirReady) {
+                    failed = true
+                    setFolderStatus(getString(R.string.export_failed))
+                    return@launch
                 }
                 setFolderStatus(getString(R.string.exporting_progress, exported, images.size))
                 val semaphore = Semaphore(2)
@@ -813,7 +947,8 @@ class LibraryFragment : Fragment() {
                                     renderer,
                                     image,
                                     folder.name,
-                                    verticalLayoutEnabled
+                                    verticalLayoutEnabled,
+                                    exportDir
                                 )
                                 if (!success) {
                                     hasFailures.set(true)
@@ -843,7 +978,11 @@ class LibraryFragment : Fragment() {
                     if (failed) getString(R.string.export_failed) else getString(R.string.export_done)
                 )
                 if (!failed && isAdded) {
-                    val path = "/Documents/manga-translate/${folder.name}"
+                    val path = if (exportTreeUri != null) {
+                        buildExportPathHint(exportTreeUri, folder.name)
+                    } else {
+                        "/Documents/manga-translate/${folder.name}"
+                    }
                     AlertDialog.Builder(requireContext())
                         .setTitle(R.string.export_success_title)
                         .setMessage(getString(R.string.export_success_message, path))
@@ -914,12 +1053,22 @@ class LibraryFragment : Fragment() {
         }
     }
 
+    private fun ensureNoMediaFile(exportDir: DocumentFile) {
+        if (exportDir.findFile(".nomedia") != null) return
+        runCatching {
+            exportDir.createFile("application/octet-stream", ".nomedia")
+        }.onFailure { e ->
+            AppLogger.log("Library", "Create .nomedia failed: ${exportDir.uri}", e)
+        }
+    }
+
     private fun exportImageWithBubbles(
         context: Context,
         renderer: BubbleRenderer,
         imageFile: File,
         folderName: String,
-        verticalLayoutEnabled: Boolean
+        verticalLayoutEnabled: Boolean,
+        exportDir: DocumentFile?
     ): Boolean {
         val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath) ?: return false
         val translation = translationStore.load(imageFile)
@@ -929,7 +1078,9 @@ class LibraryFragment : Fragment() {
             bitmap
         }
         val spec = resolveExportSpec(imageFile.name)
-        val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && exportDir != null) {
+            saveBitmapToDocumentFile(context, output, spec, exportDir)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             saveBitmapToMediaStore(context, output, spec, folderName)
         } else {
             saveBitmapToLegacyStorage(output, spec, folderName)
@@ -998,6 +1149,29 @@ class LibraryFragment : Fragment() {
             resolver.delete(uri, null, null)
         }
         return success
+    }
+
+    private fun saveBitmapToDocumentFile(
+        context: Context,
+        bitmap: Bitmap,
+        spec: ExportSpec,
+        exportDir: DocumentFile
+    ): Boolean {
+        val resolver = context.contentResolver
+        val existing = exportDir.findFile(spec.displayName)
+        val target = if (existing != null && existing.isFile) {
+            existing
+        } else {
+            exportDir.createFile(spec.mimeType, spec.displayName)
+        } ?: return false
+        return try {
+            resolver.openOutputStream(target.uri, "wt")?.use { output ->
+                bitmap.compress(spec.format, spec.quality, output)
+            } ?: false
+        } catch (e: Exception) {
+            AppLogger.log("Library", "Export write failed: ${spec.displayName}", e)
+            false
+        }
     }
 
     private fun saveBitmapToLegacyStorage(

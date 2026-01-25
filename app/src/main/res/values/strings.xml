@@ -108,6 +108,7 @@
     <string name="export_done">导出完成</string>
     <string name="export_failed">导出失败</string>
     <string name="export_permission_denied">未授予存储权限，无法导出</string>
+    <string name="export_directory_required">请在内部储存/Documents/manga-translator 选择导出目录</string>
     <string name="export_success_title">导出成功</string>
     <string name="export_success_message">文件已导出到：%1$s</string>
     <string name="api_request_failed_title">API 调用失败</string>
