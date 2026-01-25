@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true"
+    android:overScrollMode="ifContentScrolls">
+
+    <TextView
+        android:id="@+id/update_dialog_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp" />
+</ScrollView>

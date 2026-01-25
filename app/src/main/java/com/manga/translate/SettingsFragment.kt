@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ScrollView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -264,9 +265,38 @@ class SettingsFragment : Fragment() {
                 openUrl(PROJECT_URL)
             }
             .setNeutralButton(R.string.about_view_updates) { _, _ ->
-                openUrl(RELEASES_URL)
+                loadAndShowUpdateDialog()
             }
             .show()
+    }
+
+    private fun loadAndShowUpdateDialog() {
+        val hostActivity = activity as? MainActivity ?: return
+        val loadingDialog = AlertDialog.Builder(requireContext())
+            .setView(ProgressBar(requireContext()))
+            .setCancelable(false)
+            .create()
+        loadingDialog.show()
+        lifecycleScope.launch {
+            try {
+                val updateInfo = UpdateChecker.fetchUpdateInfo(30_000)
+                if (!isAdded) return@launch
+                if (updateInfo == null) {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.update_dialog_load_failed,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@launch
+                }
+                if (hostActivity.isFinishing || hostActivity.isDestroyed) return@launch
+                hostActivity.showUpdateDialog(updateInfo, showIgnoreButton = false)
+            } finally {
+                if (loadingDialog.isShowing) {
+                    loadingDialog.dismiss()
+                }
+            }
+        }
     }
 
     private fun showLlmParamsDialog() {

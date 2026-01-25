@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Build
 import android.widget.Toast
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
@@ -85,24 +86,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showUpdateDialog(updateInfo: UpdateInfo) {
+    fun showUpdateDialog(updateInfo: UpdateInfo, showIgnoreButton: Boolean = true) {
         val versionLabel = buildVersionLabel(updateInfo)
-        val message = if (updateInfo.changelog.isNotBlank()) {
-            getString(R.string.update_dialog_message, updateInfo.changelog)
-        } else {
-            getString(R.string.update_dialog_message_default)
-        }
-        AlertDialog.Builder(this)
+        val message = buildUpdateDialogMessage(updateInfo, versionLabel)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_update, null)
+        dialogView.findViewById<TextView>(R.id.update_dialog_content).text = message
+        val builder = AlertDialog.Builder(this)
             .setTitle(getString(R.string.update_dialog_title, versionLabel))
-            .setMessage(message)
+            .setView(dialogView)
             .setNegativeButton(R.string.update_dialog_cancel, null)
             .setPositiveButton(R.string.update_dialog_download) { _, _ ->
                 startDownload(updateInfo)
             }
-            .setNeutralButton(R.string.update_dialog_ignore) { _, _ ->
+        if (showIgnoreButton) {
+            builder.setNeutralButton(R.string.update_dialog_ignore) { _, _ ->
                 updateIgnoreStore.saveIgnoredVersionCode(updateInfo.versionCode)
             }
-            .show()
+        }
+        builder.show()
     }
 
     private fun startDownload(updateInfo: UpdateInfo) {
@@ -184,6 +185,37 @@ class MainActivity : AppCompatActivity() {
             return versionName
         }
         return if (updateInfo.versionCode > 0) updateInfo.versionCode.toString() else "unknown"
+    }
+
+    private fun buildUpdateDialogMessage(updateInfo: UpdateInfo, versionLabel: String): String {
+        val latestChangelog = updateInfo.changelog.trim()
+        if (latestChangelog.isBlank() && updateInfo.history.isEmpty()) {
+            return getString(R.string.update_dialog_message_default)
+        }
+        val builder = StringBuilder()
+        builder.append(getString(R.string.update_dialog_latest_header, versionLabel)).append('\n')
+        if (latestChangelog.isNotBlank()) {
+            builder.append(latestChangelog).append('\n')
+        }
+        builder.append('\n')
+            .append(getString(R.string.update_dialog_tutorial_tip))
+            .append('\n')
+        val history = updateInfo.history.filterNot {
+            it.versionName.equals(versionLabel, ignoreCase = true)
+        }
+        if (history.isNotEmpty()) {
+            builder.append('\n')
+                .append(getString(R.string.update_dialog_history_header))
+                .append('\n')
+            history.forEach { entry ->
+                builder.append('\n')
+                    .append(entry.versionName)
+                    .append('\n')
+                    .append(entry.changelog.trim())
+                    .append('\n')
+            }
+        }
+        return builder.toString().trim()
     }
 
     private fun extractVersionFromUrl(url: String): String? {

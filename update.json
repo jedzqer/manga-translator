@@ -2,5 +2,43 @@
   "versionCode": 17,
   "versionName": "2.0.0",
   "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/2.0.0/app-release.apk",
-  "changelog": "新增英文支持。新增气泡编辑功能，用户可以通过创建空白气泡，重新识别翻译没能识别的区域（具体方法查看软件教程）。新增漫画导出功能。"
+  "changelog": "新增英文支持。新增气泡编辑功能，用户可以通过创建空白气泡，重新识别翻译没能识别的区域（具体方法查看软件教程）。新增漫画导出功能。",
+  "history": [
+    {
+      "versionName": "1.3.4",
+      "changelog": "修复了边翻译边阅读时的闪退bug。"
+    },
+    {
+      "versionName": "1.3.3",
+      "changelog": "添加了一些可供调整的API参数，以改善翻译质量。"
+    },
+    {
+      "versionName": "1.3.2",
+      "changelog": "添加API超时设置，将普通翻译也改为整页翻译。"
+    },
+    {
+      "versionName": "1.3.1",
+      "changelog": "全文速译会跳过已经提取译名的图片，支持漫画图片缩放与等高显示，更新了软件图标。"
+    },
+    {
+      "versionName": "1.3.0",
+      "changelog": "优化性能，修复若干bug，添加主题系统，添加点击图片文件名跳转阅读功能。"
+    },
+    {
+      "versionName": "1.2.1",
+      "changelog": "真正修复了总是提示更新的错误，建议更新。修复了分享日志闪退的bug。"
+    },
+    {
+      "versionName": "1.2.0",
+      "changelog": "修复了总是提示更新的错误，尝试修复了不翻译的问题，完善了翻译效果，可以翻译非文字气泡内容，加强了翻译时的后台保活和进度保存。"
+    },
+    {
+      "versionName": "1.1.0",
+      "changelog": "支持HTTP，添加教程页面，优化了体验细节。"
+    },
+    {
+      "versionName": "1.0.0",
+      "changelog": "正式版更新，添加通知显示，新增全文速译、重译功能，新增并发翻译，添加从EhViewer的下载目录中导入漫画的功能（其实也可以从其它可访问目录导入）"
+    }
+  ]
 }
