@@ -74,6 +74,28 @@ internal class LibraryImportExportCoordinator(
         showEhViewerSubfolderPicker(uiContext, treeUri, scope, onShowFolderList)
     }
 
+    fun importFromCbz(
+        uiContext: Context,
+        uri: Uri,
+        scope: CoroutineScope,
+        onShowFolderList: () -> Unit
+    ) {
+        scope.launch(Dispatchers.IO) {
+            val result = repository.importCbz(uri)
+            withContext(Dispatchers.Main) {
+                when {
+                    result == null -> ui.showToast(R.string.cbz_import_failed)
+                    result.importedCount <= 0 -> ui.showToast(R.string.cbz_import_no_images)
+                    else -> ui.showToastMessage(
+                        uiContext.getString(R.string.cbz_import_done, result.importedCount)
+                    )
+                }
+                ui.refreshFolders()
+                onShowFolderList()
+            }
+        }
+    }
+
     fun handleEhViewerTreeSelection(
         uiContext: Context,
         uri: Uri,

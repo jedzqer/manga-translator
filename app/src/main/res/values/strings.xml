@@ -64,6 +64,7 @@
     <string name="tutorial_option_github">GitHub</string>
     <string name="create_folder">新建文件夹</string>
     <string name="import_ehviewer">从 EhViewer 导入</string>
+    <string name="import_cbz">从 CBZ 导入</string>
     <string name="folder_name_hint">文件夹名称</string>
     <string name="folder_create_failed">创建失败，请检查名称</string>
     <string name="folder_empty">暂无漫画文件夹</string>
@@ -109,6 +110,9 @@
     <string name="ehviewer_no_images">所选文件夹没有图片</string>
     <string name="ehviewer_import_failed">导入失败，请重试</string>
     <string name="ehviewer_import_done">已导入 %1$d 张图片</string>
+    <string name="cbz_import_failed">CBZ 导入失败，请重试</string>
+    <string name="cbz_import_no_images">CBZ 中未找到可导入图片</string>
+    <string name="cbz_import_done">CBZ 导入完成，已导入 %1$d 张图片</string>
     <string name="translation_done">翻译完成</string>
     <string name="translation_failed">翻译失败</string>
     <string name="exporting_progress">导出中…(%1$d/%2$d)</string>

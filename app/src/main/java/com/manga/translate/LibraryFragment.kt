@@ -143,6 +143,14 @@ class LibraryFragment : Fragment() {
         }
     }
 
+    private val pickCbzFile = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            importFromCbz(uri)
+        }
+    }
+
     private val pickExportTree = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -219,6 +227,9 @@ class LibraryFragment : Fragment() {
 
         binding.addFolderFab.setOnClickListener { showCreateFolderDialog() }
         binding.importEhviewerButton.setOnClickListener { importFromEhViewer() }
+        binding.importCbzButton.setOnClickListener {
+            pickCbzFile.launch(arrayOf("*/*"))
+        }
         binding.tutorialButton.setOnClickListener { openTutorial() }
         binding.folderBackButton.setOnClickListener { showFolderList() }
         binding.folderAddImages.setOnClickListener { pickImages.launch(arrayOf("image/*")) }
@@ -272,6 +283,7 @@ class LibraryFragment : Fragment() {
         binding.folderDetailContainer.visibility = View.GONE
         binding.addFolderFab.visibility = View.VISIBLE
         binding.tutorialButton.visibility = View.VISIBLE
+        binding.importCbzButton.visibility = View.VISIBLE
         binding.importEhviewerButton.visibility = View.VISIBLE
         uiCallbacks.clearFolderStatus()
         selectionController.exitSelectionMode()
@@ -288,6 +300,7 @@ class LibraryFragment : Fragment() {
         binding.folderDetailContainer.visibility = View.VISIBLE
         binding.addFolderFab.visibility = View.GONE
         binding.tutorialButton.visibility = View.GONE
+        binding.importCbzButton.visibility = View.GONE
         binding.importEhviewerButton.visibility = View.GONE
         selectionController.exitSelectionMode()
         AppLogger.log("Library", "Opened folder ${folder.name}")
@@ -363,6 +376,15 @@ class LibraryFragment : Fragment() {
         importExportCoordinator.importFromEhViewer(
             uiContext = requireContext(),
             requestEhViewerPermission = { initialUri -> pickEhViewerTree.launch(initialUri) },
+            scope = viewLifecycleOwner.lifecycleScope,
+            onShowFolderList = { showFolderList() }
+        )
+    }
+
+    private fun importFromCbz(uri: Uri) {
+        importExportCoordinator.importFromCbz(
+            uiContext = requireContext(),
+            uri = uri,
             scope = viewLifecycleOwner.lifecycleScope,
             onShowFolderList = { showFolderList() }
         )

@@ -6,6 +6,7 @@ import android.provider.OpenableColumns
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
+import java.util.zip.ZipInputStream
 
 class LibraryRepository(private val context: Context) {
     private val rootDir: File = File(
@@ -60,6 +61,47 @@ class LibraryRepository(private val context: Context) {
         return added
     }
 
+    fun importCbz(uri: Uri): CbzImportResult? {
+        val cbzName = queryDisplayName(uri) ?: "cbz_import_${System.currentTimeMillis()}.cbz"
+        val folderName = cbzName.substringBeforeLast('.', cbzName).trim().ifEmpty { "cbz_import" }
+        val folder = createUniqueFolder(folderName) ?: return null
+        var importedCount = 0
+        try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                ZipInputStream(input).use { zip ->
+                    var entry = zip.nextEntry
+                    while (entry != null) {
+                        if (!entry.isDirectory) {
+                            val entryName = entry.name.substringAfterLast('/')
+                            if (entryName.isNotBlank() && isImageFile(entryName)) {
+                                val dest = resolveUniqueFile(folder, entryName)
+                                FileOutputStream(dest).use { output ->
+                                    zip.copyTo(output)
+                                }
+                                importedCount += 1
+                            }
+                        }
+                        zip.closeEntry()
+                        entry = zip.nextEntry
+                    }
+                }
+            } ?: run {
+                folder.deleteRecursively()
+                return null
+            }
+        } catch (e: Exception) {
+            AppLogger.log("LibraryRepo", "CBZ import failed: $cbzName", e)
+            folder.deleteRecursively()
+            return null
+        }
+
+        if (importedCount == 0) {
+            folder.deleteRecursively()
+            return CbzImportResult(folder = null, importedCount = 0)
+        }
+        return CbzImportResult(folder = folder, importedCount = importedCount)
+    }
+
     fun deleteFolder(folder: File): Boolean {
         if (!folder.exists()) return false
         return folder.deleteRecursively()
@@ -86,6 +128,20 @@ class LibraryRepository(private val context: Context) {
         return candidate
     }
 
+    private fun createUniqueFolder(baseName: String): File? {
+        val sanitized = baseName.trim().replace("/", "_").replace("\\", "_")
+        if (sanitized.isEmpty() || sanitized.contains("..")) return null
+        var index = 0
+        while (true) {
+            val candidateName = if (index == 0) sanitized else "${sanitized}_$index"
+            val folder = File(rootDir, candidateName)
+            if (!folder.exists()) {
+                return if (folder.mkdirs()) folder else null
+            }
+            index += 1
+        }
+    }
+
     private fun queryDisplayName(uri: Uri): String? {
         return try {
             context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -110,4 +166,9 @@ class LibraryRepository(private val context: Context) {
             AppLogger.log("LibraryRepo", "Migration failed", e)
         }
     }
+
+    data class CbzImportResult(
+        val folder: File?,
+        val importedCount: Int
+    )
 }
