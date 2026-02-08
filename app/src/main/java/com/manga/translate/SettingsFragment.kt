@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
@@ -75,10 +76,6 @@ class SettingsFragment : Fragment() {
             showLinkSourceDialog()
         }
 
-        binding.saveButton.setOnClickListener {
-            persistSettings(showToast = true)
-        }
-
         binding.fetchModelsButton.setOnClickListener {
             fetchModelList()
         }
@@ -110,11 +107,11 @@ class SettingsFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         if (_binding != null) {
-            persistSettings(showToast = false)
+            persistSettings()
         }
     }
 
-    private fun persistSettings(showToast: Boolean) {
+    private fun persistSettings() {
         val url = binding.apiUrlInput.text?.toString()?.trim().orEmpty()
         val key = binding.apiKeyInput.text?.toString()?.trim().orEmpty()
         val model = binding.modelNameInput.text?.toString()?.trim().orEmpty()
@@ -134,9 +131,6 @@ class SettingsFragment : Fragment() {
             binding.maxConcurrencyInput.setText(normalized.toString())
         }
         AppLogger.log("Settings", "API settings saved")
-        if (showToast) {
-            Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun showLogsDialog() {
@@ -156,11 +150,23 @@ class SettingsFragment : Fragment() {
             .setItems(names) { _, which ->
                 shareLogFile(files[which])
             }
+            .setNeutralButton(R.string.share_error_logs) { _, _ ->
+                shareErrorLogsArchive()
+            }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun shareLogFile(file: File) {
+    private fun shareErrorLogsArchive() {
+        val archive = AppLogger.createErrorLogsArchive(requireContext())
+        if (archive == null || !archive.exists()) {
+            Toast.makeText(requireContext(), R.string.error_logs_empty, Toast.LENGTH_SHORT).show()
+            return
+        }
+        shareLogFile(archive, getString(R.string.share_error_logs))
+    }
+
+    private fun shareLogFile(file: File, chooserTitle: String = getString(R.string.share_logs)) {
         if (!file.exists()) {
             Toast.makeText(requireContext(), R.string.logs_empty, Toast.LENGTH_SHORT).show()
             return
@@ -170,12 +176,17 @@ class SettingsFragment : Fragment() {
             "${requireContext().packageName}.fileprovider",
             file
         )
+        val mimeType = if (file.extension.lowercase(Locale.US) == "zip") {
+            "application/zip"
+        } else {
+            "text/plain"
+        }
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
+            type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        val chooser = Intent.createChooser(intent, getString(R.string.share_logs))
+        val chooser = Intent.createChooser(intent, chooserTitle)
         val manager = requireContext().packageManager
         if (chooser.resolveActivity(manager) != null) {
             AppLogger.log("Settings", "Share log file ${file.name}")
@@ -348,7 +359,7 @@ class SettingsFragment : Fragment() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.llm_params_title)
             .setView(dialogBinding.root)
-            .setPositiveButton(R.string.save_settings) { _, _ ->
+            .setPositiveButton(android.R.string.ok) { _, _ ->
                 val parsed = parseLlmParams(dialogBinding)
                 settingsStore.saveLlmParameters(parsed.params)
                 if (parsed.hasInvalid) {

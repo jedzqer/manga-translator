@@ -27,13 +27,11 @@
     <string name="theme_dark">暗色</string>
     <string name="theme_light">白色</string>
     <string name="theme_pink">粉色</string>
-    <string name="save_settings">保存设置</string>
     <string name="fetch_models">获取模型列表</string>
     <string name="fetch_models_title">模型列表</string>
     <string name="fetch_models_loading">正在获取模型列表…</string>
     <string name="fetch_models_failed_title">获取模型列表失败</string>
     <string name="fetch_models_failed_message">请求失败（%1$s）</string>
-    <string name="settings_saved">设置已保存</string>
     <string name="llm_params_button">AI 参数设置</string>
     <string name="llm_params_title">AI 参数设置</string>
     <string name="llm_params_clear">全部留空</string>
@@ -53,6 +51,8 @@
     <string name="logs_title">应用日志</string>
     <string name="logs_folder_title">选择要分享的日志</string>
     <string name="logs_folder_empty">暂无日志文件</string>
+    <string name="share_error_logs">分享错误日志</string>
+    <string name="error_logs_empty">暂无错误日志</string>
     <string name="share_logs_failed">无法分享日志文件</string>
     <string name="copy_logs">复制日志</string>
     <string name="logs_empty">暂无日志</string>
@@ -131,8 +131,8 @@
     <string name="reading_edit_bubbles">编辑气泡</string>
     <string name="reading_confirm_edit">完成编辑</string>
     <string name="reading_edit_bubble_title">编辑气泡内容</string>
-    <string name="reading_bubble_width_hint">宽%</string>
-    <string name="reading_bubble_height_hint">高%</string>
+    <string name="reading_bubble_width_hint">宽%%</string>
+    <string name="reading_bubble_height_hint">高%%</string>
     <string name="reading_add_bubble">添加气泡</string>
     <string name="reading_empty_bubble_hint">留空则软件会自动在对应区域识别文字。</string>
     <string name="reading_empty_bubble_translating">正在翻译气泡…</string>

@@ -167,24 +167,14 @@
             android:layout_marginTop="16dp" />
 
         <Button
-            android:id="@+id/save_button"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/save_settings"
-            app:layout_constraintTop_toBottomOf="@id/link_source_button"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="20dp" />
-
-        <Button
             android:id="@+id/about_button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="@string/about_button"
-            app:layout_constraintTop_toBottomOf="@id/save_button"
+            app:layout_constraintTop_toBottomOf="@id/link_source_button"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="12dp" />
+            android:layout_marginTop="20dp" />
 
         <Button
             android:id="@+id/view_logs_button"
