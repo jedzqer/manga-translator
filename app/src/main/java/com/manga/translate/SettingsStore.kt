@@ -100,6 +100,17 @@ class SettingsStore(context: Context) {
             .apply()
     }
 
+    fun loadLinkSource(): LinkSource {
+        val saved = prefs.getString(KEY_LINK_SOURCE, LinkSource.GITEE.prefValue)
+        return LinkSource.fromPref(saved)
+    }
+
+    fun saveLinkSource(source: LinkSource) {
+        prefs.edit()
+            .putString(KEY_LINK_SOURCE, source.prefValue)
+            .apply()
+    }
+
     fun loadLlmParameters(): LlmParameterSettings {
         return LlmParameterSettings(
             temperature = readDoubleWithDefault(KEY_LLM_TEMPERATURE, DEFAULT_LLM_TEMPERATURE),
@@ -163,6 +174,7 @@ class SettingsStore(context: Context) {
         private const val KEY_API_TIMEOUT_SECONDS = "api_timeout_seconds"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_READING_DISPLAY_MODE = "reading_display_mode"
+        private const val KEY_LINK_SOURCE = "link_source"
         private const val KEY_LLM_TEMPERATURE = "llm_temperature"
         private const val KEY_LLM_TOP_P = "llm_top_p"
         private const val KEY_LLM_TOP_K = "llm_top_k"

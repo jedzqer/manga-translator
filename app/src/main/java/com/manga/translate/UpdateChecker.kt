@@ -21,37 +21,46 @@ data class UpdateHistoryEntry(
 )
 
 object UpdateChecker {
-    private const val UPDATE_URL =
+    private const val UPDATE_URL_GITHUB =
         "https://raw.githubusercontent.com/jedzqer/manga-translator/main/update.json"
+    private const val UPDATE_URL_GITEE =
+        "https://gitee.com/jedzqer/manga-translator/raw/main/update.json"
+    private val updateUrls = listOf(UPDATE_URL_GITHUB, UPDATE_URL_GITEE)
     private const val DEFAULT_TIMEOUT_MS = 15_000
 
     suspend fun fetchUpdateInfo(timeoutMs: Int = DEFAULT_TIMEOUT_MS): UpdateInfo? =
         withContext(Dispatchers.IO) {
-        val connection = (URL(UPDATE_URL).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = timeoutMs
-            readTimeout = timeoutMs
-        }
-            return@withContext try {
-                val code = connection.responseCode
-                val stream = if (code in 200..299) {
-                    connection.inputStream
-                } else {
-                    connection.errorStream
+            for ((index, url) in updateUrls.withIndex()) {
+                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = timeoutMs
+                    readTimeout = timeoutMs
                 }
-                val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
-                if (code !in 200..299) {
-                    AppLogger.log("UpdateChecker", "HTTP $code: $body")
-                    null
-                } else {
-                    parseUpdateInfo(body)
+                try {
+                    val code = connection.responseCode
+                    val stream = if (code in 200..299) {
+                        connection.inputStream
+                    } else {
+                        connection.errorStream
+                    }
+                    val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                    if (code !in 200..299) {
+                        AppLogger.log("UpdateChecker", "[$index] $url HTTP $code: $body")
+                        continue
+                    }
+                    val parsed = parseUpdateInfo(body)
+                    if (parsed != null) {
+                        AppLogger.log("UpdateChecker", "Loaded update info from $url")
+                        return@withContext parsed
+                    }
+                    AppLogger.log("UpdateChecker", "[$index] $url returned invalid update json")
+                } catch (e: Exception) {
+                    AppLogger.log("UpdateChecker", "[$index] Update request failed: $url", e)
+                } finally {
+                    connection.disconnect()
                 }
-            } catch (e: Exception) {
-                AppLogger.log("UpdateChecker", "Update request failed", e)
-                null
-            } finally {
-                connection.disconnect()
             }
+            null
         }
 
     private fun parseUpdateInfo(body: String): UpdateInfo? {

@@ -70,8 +70,10 @@ class LibraryFragment : Fragment() {
     private val exportTreeKey = "export_tree_uri"
     private val fullTranslateKeyPrefix = "full_translate_enabled_"
     private val languageKeyPrefix = "translation_language_"
-    private val tutorialUrl =
+    private val tutorialUrlGithub =
         "https://github.com/jedzqer/manga-translator/blob/main/Tutorial/简中教程.md"
+    private val tutorialUrlGitee =
+        "https://gitee.com/jedzqer/manga-translator/blob/main/Tutorial/简中教程.md"
     private var pendingExportAfterPermission = false
     private var pendingExportAfterExportTreeSelection = false
 
@@ -238,12 +240,18 @@ class LibraryFragment : Fragment() {
     }
 
     private fun openTutorial() {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tutorialUrl))
+        val source = settingsStore.loadLinkSource()
+        val url = if (source == LinkSource.GITHUB) tutorialUrlGithub else tutorialUrlGitee
+        openUrlOrToast(url)
+    }
+
+    private fun openUrlOrToast(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         val manager = requireContext().packageManager
         if (intent.resolveActivity(manager) != null) {
             startActivity(intent)
         } else {
-            Toast.makeText(requireContext(), tutorialUrl, Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), url, Toast.LENGTH_SHORT).show()
         }
     }
 

@@ -52,6 +52,8 @@ class SettingsFragment : Fragment() {
         updateThemeButton(themeMode)
         val readingMode = settingsStore.loadReadingDisplayMode()
         updateReadingDisplayButton(readingMode)
+        val linkSource = settingsStore.loadLinkSource()
+        updateLinkSourceButton(linkSource)
         binding.textLayoutSwitch.setOnCheckedChangeListener { _, isChecked ->
             settingsStore.saveUseHorizontalText(isChecked)
             AppLogger.log("Settings", "Text layout set to ${if (isChecked) "horizontal" else "vertical"}")
@@ -68,6 +70,9 @@ class SettingsFragment : Fragment() {
         }
         binding.readingDisplayButton.setOnClickListener {
             showReadingDisplayDialog()
+        }
+        binding.linkSourceButton.setOnClickListener {
+            showLinkSourceDialog()
         }
 
         binding.saveButton.setOnClickListener {
@@ -253,6 +258,29 @@ class SettingsFragment : Fragment() {
     private fun updateReadingDisplayButton(mode: ReadingDisplayMode) {
         val label = getString(mode.labelRes)
         binding.readingDisplayButton.text = getString(R.string.reading_display_format, label)
+    }
+
+    private fun showLinkSourceDialog() {
+        val sources = LinkSource.entries
+        val labels = sources.map { getString(it.labelRes) }.toTypedArray()
+        val current = settingsStore.loadLinkSource()
+        val checkedIndex = sources.indexOf(current).coerceAtLeast(0)
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.link_source_title)
+            .setSingleChoiceItems(labels, checkedIndex) { dialog, which ->
+                val selected = sources[which]
+                settingsStore.saveLinkSource(selected)
+                updateLinkSourceButton(selected)
+                AppLogger.log("Settings", "Link source set to ${selected.prefValue}")
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun updateLinkSourceButton(source: LinkSource) {
+        val label = getString(source.labelRes)
+        binding.linkSourceButton.text = getString(R.string.link_source_format, label)
     }
 
     private fun showAboutDialog() {

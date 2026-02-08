@@ -116,11 +116,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startDownload(updateInfo: UpdateInfo) {
+        val downloadUrl = resolveDownloadUrl(updateInfo.apkUrl)
         val versionLabel = buildVersionLabel(updateInfo)
         val safeVersion = versionLabel.replace(Regex("[^A-Za-z0-9._-]"), "_")
-        val fileName = Uri.parse(updateInfo.apkUrl).lastPathSegment
+        val fileName = Uri.parse(downloadUrl).lastPathSegment
             ?: "manga-translator-$safeVersion.apk"
-        val request = DownloadManager.Request(Uri.parse(updateInfo.apkUrl))
+        val request = DownloadManager.Request(Uri.parse(downloadUrl))
             .setTitle(getString(R.string.update_download_title, versionLabel))
             .setDescription(getString(R.string.update_download_description, versionLabel))
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
@@ -133,6 +134,22 @@ class MainActivity : AppCompatActivity() {
             return
         }
         downloadManager.enqueue(request)
+    }
+
+    private fun resolveDownloadUrl(apkUrl: String): String {
+        val normalizedUrl = apkUrl.trim()
+        val githubUrl = normalizedUrl
+            .replace(
+                "https://gitee.com/jedzqer/manga-translator/releases/download/",
+                "https://github.com/jedzqer/manga-translator/releases/download/"
+            )
+        val giteeUrl = normalizedUrl
+            .replace(
+                "https://github.com/jedzqer/manga-translator/releases/download/",
+                "https://gitee.com/jedzqer/manga-translator/releases/download/"
+            )
+        val source = SettingsStore(this).loadLinkSource()
+        return if (source == LinkSource.GITHUB) githubUrl else giteeUrl
     }
 
     private fun maybeShowCrashDialog() {
