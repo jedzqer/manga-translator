@@ -1,7 +1,14 @@
 package com.manga.translate
 
 import android.content.Context
+import android.text.InputType
+import android.util.TypedValue
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
@@ -116,6 +123,83 @@ internal class LibraryDialogs {
             .setTitle(R.string.export_success_title)
             .setMessage(context.getString(R.string.export_success_message, path))
             .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    fun showExportOptionsDialog(
+        context: Context,
+        defaultThreads: Int,
+        defaultExportAsCbz: Boolean,
+        exportRootPathHint: String,
+        onConfirm: (Int, Boolean) -> Unit
+    ) {
+        val input = EditText(context).apply {
+            hint = context.getString(R.string.export_thread_hint)
+            setText(defaultThreads.toString())
+            setSelection(text.length)
+            inputType = InputType.TYPE_CLASS_NUMBER
+            imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        }
+        val cbzCheckBox = CheckBox(context).apply {
+            text = context.getString(R.string.export_as_cbz_option)
+            isChecked = defaultExportAsCbz
+        }
+        val pathHintView = TextView(context).apply {
+            val topMargin = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                8f,
+                context.resources.displayMetrics
+            ).toInt()
+            setPadding(0, topMargin, 0, 0)
+            text = context.getString(R.string.export_path_hint_format, exportRootPathHint)
+        }
+        val container = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            val side = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                20f,
+                context.resources.displayMetrics
+            ).toInt()
+            val vertical = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                12f,
+                context.resources.displayMetrics
+            ).toInt()
+            setPadding(side, vertical, side, vertical)
+            addView(
+                input,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+            addView(
+                cbzCheckBox,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+            addView(
+                pathHintView,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+        }
+        AlertDialog.Builder(context)
+            .setTitle(R.string.export_options_title)
+            .setView(container)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val threadCount = input.text?.toString()?.toIntOrNull()
+                if (threadCount == null || threadCount !in 1..16) {
+                    Toast.makeText(context, R.string.export_thread_invalid, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                onConfirm(threadCount, cbzCheckBox.isChecked)
+            }
             .show()
     }
 

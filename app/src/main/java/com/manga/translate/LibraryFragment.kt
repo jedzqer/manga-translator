@@ -403,18 +403,27 @@ class LibraryFragment : Fragment() {
 
     private fun exportFolder() {
         val folder = currentFolder ?: return
-        importExportCoordinator.exportFolder(
-            uiContext = requireContext(),
-            folder = folder,
-            images = repository.listImages(folder),
-            scope = viewLifecycleOwner.lifecycleScope,
-            requestExportDirectoryPermission = { initialUri -> pickExportTree.launch(initialUri) },
-            requestLegacyPermission = {
-                requestStoragePermission.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            },
-            onExitSelectionMode = { selectionController.exitSelectionMode() },
-            onSetExportEnabled = { enabled -> _binding?.folderExport?.isEnabled = enabled }
-        )
+        dialogs.showExportOptionsDialog(
+            context = requireContext(),
+            defaultThreads = importExportCoordinator.getExportThreadCount(),
+            defaultExportAsCbz = importExportCoordinator.getExportAsCbzDefault(),
+            exportRootPathHint = importExportCoordinator.buildExportRootPathPreview()
+        ) { exportThreads, exportAsCbz ->
+            importExportCoordinator.exportFolder(
+                uiContext = requireContext(),
+                folder = folder,
+                images = repository.listImages(folder),
+                scope = viewLifecycleOwner.lifecycleScope,
+                exportThreads = exportThreads,
+                exportAsCbz = exportAsCbz,
+                requestExportDirectoryPermission = { initialUri -> pickExportTree.launch(initialUri) },
+                requestLegacyPermission = {
+                    requestStoragePermission.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                },
+                onExitSelectionMode = { selectionController.exitSelectionMode() },
+                onSetExportEnabled = { enabled -> _binding?.folderExport?.isEnabled = enabled }
+            )
+        }
     }
 
     private fun startReading() {

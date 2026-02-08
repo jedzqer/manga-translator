@@ -22,8 +22,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -41,6 +45,19 @@ internal class LibraryImportExportCoordinator(
     private val prefsRef = prefs
     private var pendingExportAfterPermission = false
     private var pendingExportAfterExportTreeSelection = false
+    private var pendingExportThreads = loadExportThreads()
+    private var pendingExportAsCbz = loadExportAsCbzDefault()
+
+    fun getExportThreadCount(): Int = loadExportThreads()
+    fun getExportAsCbzDefault(): Boolean = loadExportAsCbzDefault()
+    fun buildExportRootPathPreview(): String {
+        val treeUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            preferencesGateway.getExportTreeUri()?.takeIf { preferencesGateway.hasExportPermission(it) }
+        } else {
+            null
+        }
+        return treeUri?.let(::buildExportRootPathHint) ?: "/Documents/manga-translate"
+    }
 
     fun importFromEhViewer(
         uiContext: Context,
@@ -173,12 +190,20 @@ internal class LibraryImportExportCoordinator(
         folder: File?,
         images: List<File>,
         scope: CoroutineScope,
+        exportThreads: Int,
+        exportAsCbz: Boolean,
         requestExportDirectoryPermission: (Uri?) -> Unit,
         requestLegacyPermission: () -> Unit,
         onExitSelectionMode: () -> Unit,
         onSetExportEnabled: (Boolean) -> Unit
     ) {
         if (folder == null) return
+        pendingExportThreads = normalizeExportThreads(exportThreads)
+        pendingExportAsCbz = exportAsCbz
+        prefsRef.edit()
+            .putInt(KEY_EXPORT_THREADS, pendingExportThreads)
+            .putBoolean(KEY_EXPORT_AS_CBZ, pendingExportAsCbz)
+            .apply()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val treeUri = preferencesGateway.getExportTreeUri()
             if (treeUri == null || !preferencesGateway.hasExportPermission(treeUri)) {
@@ -204,6 +229,8 @@ internal class LibraryImportExportCoordinator(
             folder = folder,
             images = images,
             scope = scope,
+            exportThreads = pendingExportThreads,
+            exportAsCbz = pendingExportAsCbz,
             onExitSelectionMode = onExitSelectionMode,
             onSetExportEnabled = onSetExportEnabled
         )
@@ -223,6 +250,8 @@ internal class LibraryImportExportCoordinator(
             folder = folder,
             images = images,
             scope = scope,
+            exportThreads = pendingExportThreads,
+            exportAsCbz = pendingExportAsCbz,
             onExitSelectionMode = onExitSelectionMode,
             onSetExportEnabled = onSetExportEnabled
         )
@@ -233,6 +262,8 @@ internal class LibraryImportExportCoordinator(
         folder: File,
         images: List<File>,
         scope: CoroutineScope,
+        exportThreads: Int,
+        exportAsCbz: Boolean,
         onExitSelectionMode: () -> Unit,
         onSetExportEnabled: (Boolean) -> Unit
     ) {
@@ -268,14 +299,14 @@ internal class LibraryImportExportCoordinator(
             var exportDirReady = true
             try {
                 withContext(Dispatchers.IO) {
-                    if (exportTreeUri != null) {
+                    if (exportTreeUri != null && !exportAsCbz) {
                         exportDir = resolveExportDirectory(appContext, exportTreeUri, folder.name)
                         if (exportDir == null) {
                             exportDirReady = false
                         } else {
                             ensureNoMediaFile(exportDir!!)
                         }
-                    } else {
+                    } else if (!exportAsCbz) {
                         ensureNoMediaFile(appContext, folder.name)
                     }
                 }
@@ -285,52 +316,81 @@ internal class LibraryImportExportCoordinator(
                     return@launch
                 }
                 ui.setFolderStatus(appContext.getString(R.string.exporting_progress, 0, images.size))
-                val semaphore = Semaphore(2)
-                val exportedCount = AtomicInteger(0)
-                val hasFailures = AtomicBoolean(false)
+                var successPathHint: String? = null
 
-                coroutineScope {
-                    val tasks = images.map { image ->
-                        async(Dispatchers.IO) {
-                            semaphore.withPermit {
-                                val renderer = BubbleRenderer(appContext)
-                                val success = exportImageWithBubbles(
-                                    appContext,
-                                    renderer,
-                                    image,
-                                    folder.name,
-                                    verticalLayoutEnabled,
-                                    exportDir
-                                )
-                                if (!success) {
-                                    hasFailures.set(true)
-                                }
-                                val count = exportedCount.incrementAndGet()
-                                withContext(Dispatchers.Main) {
-                                    ui.setFolderStatus(
-                                        appContext.getString(R.string.exporting_progress, count, images.size)
-                                    )
-                                    TranslationKeepAliveService.updateProgress(
+                if (exportAsCbz) {
+                    val result = exportCbzWithBubbles(
+                        context = appContext,
+                        folder = folder,
+                        images = images,
+                        verticalLayoutEnabled = verticalLayoutEnabled,
+                        exportThreads = normalizeExportThreads(exportThreads),
+                        exportTreeUri = exportTreeUri
+                    ) { count ->
+                        withContext(Dispatchers.Main) {
+                            ui.setFolderStatus(
+                                appContext.getString(R.string.exporting_progress, count, images.size)
+                            )
+                            TranslationKeepAliveService.updateProgress(
+                                appContext,
+                                count,
+                                images.size,
+                                appContext.getString(R.string.exporting_progress, count, images.size),
+                                appContext.getString(R.string.export_keepalive_title),
+                                appContext.getString(R.string.translation_keepalive_message)
+                            )
+                        }
+                    }
+                    failed = !result.success
+                    successPathHint = result.pathHint
+                } else {
+                    val semaphore = Semaphore(normalizeExportThreads(exportThreads))
+                    val exportedCount = AtomicInteger(0)
+                    val hasFailures = AtomicBoolean(false)
+
+                    coroutineScope {
+                        val tasks = images.map { image ->
+                            async(Dispatchers.IO) {
+                                semaphore.withPermit {
+                                    val renderer = BubbleRenderer(appContext)
+                                    val success = exportImageWithBubbles(
                                         appContext,
-                                        count,
-                                        images.size,
-                                        appContext.getString(R.string.exporting_progress, count, images.size),
-                                        appContext.getString(R.string.export_keepalive_title),
-                                        appContext.getString(R.string.translation_keepalive_message)
+                                        renderer,
+                                        image,
+                                        folder.name,
+                                        verticalLayoutEnabled,
+                                        exportDir
                                     )
+                                    if (!success) {
+                                        hasFailures.set(true)
+                                    }
+                                    val count = exportedCount.incrementAndGet()
+                                    withContext(Dispatchers.Main) {
+                                        ui.setFolderStatus(
+                                            appContext.getString(R.string.exporting_progress, count, images.size)
+                                        )
+                                        TranslationKeepAliveService.updateProgress(
+                                            appContext,
+                                            count,
+                                            images.size,
+                                            appContext.getString(R.string.exporting_progress, count, images.size),
+                                            appContext.getString(R.string.export_keepalive_title),
+                                            appContext.getString(R.string.translation_keepalive_message)
+                                        )
+                                    }
                                 }
                             }
                         }
+                        tasks.awaitAll()
                     }
-                    tasks.awaitAll()
+                    failed = hasFailures.get()
                 }
 
-                failed = failed || hasFailures.get()
                 ui.setFolderStatus(
                     if (failed) appContext.getString(R.string.export_failed) else appContext.getString(R.string.export_done)
                 )
                 if (!failed && ui.isFragmentActive()) {
-                    val path = if (exportTreeUri != null) {
+                    val path = successPathHint ?: if (exportTreeUri != null) {
                         buildExportPathHint(exportTreeUri, folder.name)
                     } else {
                         "/Documents/manga-translate/${folder.name}"
@@ -366,6 +426,11 @@ internal class LibraryImportExportCoordinator(
     }
 
     private fun buildExportPathHint(treeUri: Uri, folderName: String): String {
+        val base = buildExportRootPathHint(treeUri)
+        return "$base/$folderName"
+    }
+
+    private fun buildExportRootPathHint(treeUri: Uri): String {
         val docId = try {
             android.provider.DocumentsContract.getTreeDocumentId(treeUri)
         } catch (_: Exception) {
@@ -378,7 +443,7 @@ internal class LibraryImportExportCoordinator(
                 id
             }
         } ?: "所选目录"
-        return "$base/$folderName"
+        return base
     }
 
     private fun isImageDocument(file: DocumentFile): Boolean {
@@ -637,4 +702,256 @@ internal class LibraryImportExportCoordinator(
         val format: Bitmap.CompressFormat,
         val quality: Int
     )
+
+    private data class CbzExportResult(
+        val success: Boolean,
+        val pathHint: String?
+    )
+
+    private data class PreparedCbzEntry(
+        val index: Int,
+        val entryName: String,
+        val tempFile: File
+    )
+
+    private suspend fun exportCbzWithBubbles(
+        context: Context,
+        folder: File,
+        images: List<File>,
+        verticalLayoutEnabled: Boolean,
+        exportThreads: Int,
+        exportTreeUri: Uri?,
+        onProgress: suspend (Int) -> Unit
+    ): CbzExportResult {
+        val preparedEntries = prepareCbzEntries(
+            context = context,
+            folderName = folder.name,
+            images = images,
+            verticalLayoutEnabled = verticalLayoutEnabled,
+            exportThreads = exportThreads,
+            onProgress = onProgress
+        ) ?: return CbzExportResult(success = false, pathHint = null)
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && exportTreeUri != null) {
+            exportCbzToDocumentTree(
+                context = context,
+                folder = folder,
+                exportTreeUri = exportTreeUri,
+                preparedEntries = preparedEntries
+            )
+        } else {
+            exportCbzToLegacyStorage(
+                folder = folder,
+                preparedEntries = preparedEntries
+            )
+        }
+    }
+
+    private suspend fun exportCbzToDocumentTree(
+        context: Context,
+        folder: File,
+        exportTreeUri: Uri,
+        preparedEntries: List<PreparedCbzEntry>
+    ): CbzExportResult {
+        val root = DocumentFile.fromTreeUri(context, exportTreeUri)
+        if (root == null || !root.canWrite()) {
+            cleanupPreparedCbzEntries(preparedEntries)
+            return CbzExportResult(success = false, pathHint = null)
+        }
+        val cbzName = resolveUniqueCbzName(root, folder.name)
+        val target = root.createFile("application/vnd.comicbook+zip", cbzName)
+            ?: run {
+                cleanupPreparedCbzEntries(preparedEntries)
+                return CbzExportResult(success = false, pathHint = null)
+            }
+        val pathHint = "${buildExportRootPathHint(exportTreeUri)}/$cbzName"
+
+        return try {
+            withContext(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(target.uri, "wt")?.use { stream ->
+                    ZipOutputStream(BufferedOutputStream(stream)).use { zip ->
+                        for (entry in preparedEntries.sortedBy { it.index }) {
+                            zip.putNextEntry(ZipEntry(entry.entryName))
+                            FileInputStream(entry.tempFile).use { input ->
+                                input.copyTo(zip)
+                            }
+                            zip.closeEntry()
+                        }
+                    }
+                } ?: return@withContext CbzExportResult(false, null)
+                CbzExportResult(success = true, pathHint = pathHint)
+            }
+        } catch (e: Exception) {
+            AppLogger.log("Library", "Export CBZ failed: ${folder.name}", e)
+            runCatching { target.delete() }
+            CbzExportResult(success = false, pathHint = null)
+        } finally {
+            cleanupPreparedCbzEntries(preparedEntries)
+        }
+    }
+
+    private suspend fun exportCbzToLegacyStorage(
+        folder: File,
+        preparedEntries: List<PreparedCbzEntry>
+    ): CbzExportResult {
+        val root = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+            "manga-translate"
+        )
+        if (!root.exists() && !root.mkdirs()) {
+            cleanupPreparedCbzEntries(preparedEntries)
+            return CbzExportResult(success = false, pathHint = null)
+        }
+        val target = resolveUniqueFile(root, "${folder.name}.cbz")
+        val pathHint = "/Documents/manga-translate/${target.name}"
+
+        return try {
+            withContext(Dispatchers.IO) {
+                FileOutputStream(target).use { stream ->
+                    ZipOutputStream(BufferedOutputStream(stream)).use { zip ->
+                        for (entry in preparedEntries.sortedBy { it.index }) {
+                            zip.putNextEntry(ZipEntry(entry.entryName))
+                            FileInputStream(entry.tempFile).use { input ->
+                                input.copyTo(zip)
+                            }
+                            zip.closeEntry()
+                        }
+                    }
+                }
+                CbzExportResult(success = true, pathHint = pathHint)
+            }
+        } catch (e: Exception) {
+            AppLogger.log("Library", "Export CBZ failed: ${folder.name}", e)
+            runCatching { target.delete() }
+            CbzExportResult(success = false, pathHint = null)
+        } finally {
+            cleanupPreparedCbzEntries(preparedEntries)
+        }
+    }
+
+    private suspend fun prepareCbzEntries(
+        context: Context,
+        folderName: String,
+        images: List<File>,
+        verticalLayoutEnabled: Boolean,
+        exportThreads: Int,
+        onProgress: suspend (Int) -> Unit
+    ): List<PreparedCbzEntry>? {
+        val tempDir = File(context.cacheDir, "cbz_export_${System.currentTimeMillis()}_$folderName")
+        if (!tempDir.exists() && !tempDir.mkdirs()) {
+            AppLogger.log("Library", "Create CBZ temp directory failed: ${tempDir.absolutePath}")
+            return null
+        }
+
+        val semaphore = Semaphore(normalizeExportThreads(exportThreads))
+        val renderedCount = AtomicInteger(0)
+        val hasFailures = AtomicBoolean(false)
+        val entries = MutableList<PreparedCbzEntry?>(images.size) { null }
+
+        return try {
+            coroutineScope {
+                val tasks = images.mapIndexed { index, image ->
+                    async(Dispatchers.IO) {
+                        semaphore.withPermit {
+                            val prepared = renderImageToTempFile(
+                                context = context,
+                                imageFile = image,
+                                verticalLayoutEnabled = verticalLayoutEnabled,
+                                tempDir = tempDir,
+                                index = index
+                            )
+                            if (prepared == null) {
+                                hasFailures.set(true)
+                            } else {
+                                entries[index] = prepared
+                            }
+                            onProgress(renderedCount.incrementAndGet())
+                        }
+                    }
+                }
+                tasks.awaitAll()
+            }
+            if (hasFailures.get() || entries.any { it == null }) {
+                null
+            } else {
+                entries.filterNotNull()
+            }
+        } finally {
+            if (hasFailures.get() || entries.any { it == null }) {
+                runCatching { tempDir.deleteRecursively() }
+            }
+        }
+    }
+
+    private fun renderImageToTempFile(
+        context: Context,
+        imageFile: File,
+        verticalLayoutEnabled: Boolean,
+        tempDir: File,
+        index: Int
+    ): PreparedCbzEntry? {
+        val renderer = BubbleRenderer(context)
+        val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath) ?: return null
+        val translation = translationStore.load(imageFile)
+        val output = if (translation != null && translation.bubbles.any { it.text.isNotBlank() }) {
+            renderer.render(bitmap, translation, verticalLayoutEnabled)
+        } else {
+            bitmap
+        }
+        val spec = resolveExportSpec(imageFile.name)
+        val tempFile = File(tempDir, "entry_$index")
+        val success = try {
+            FileOutputStream(tempFile).use { outputStream ->
+                output.compress(spec.format, spec.quality, outputStream)
+            }
+        } catch (e: Exception) {
+            AppLogger.log("Library", "Write CBZ entry failed: ${imageFile.name}", e)
+            false
+        } finally {
+            if (output !== bitmap) {
+                output.recycle()
+            }
+            bitmap.recycle()
+        }
+        if (!success) return null
+        return PreparedCbzEntry(index = index, entryName = spec.displayName, tempFile = tempFile)
+    }
+
+    private fun cleanupPreparedCbzEntries(entries: List<PreparedCbzEntry>) {
+        val tempDir = entries.firstOrNull()?.tempFile?.parentFile ?: return
+        runCatching { tempDir.deleteRecursively() }
+    }
+
+    private fun resolveUniqueCbzName(root: DocumentFile, folderName: String): String {
+        var index = 0
+        while (true) {
+            val fileName = if (index == 0) "$folderName.cbz" else "${folderName}_$index.cbz"
+            val existing = root.findFile(fileName)
+            if (existing == null) {
+                return fileName
+            }
+            index += 1
+        }
+    }
+
+    private fun loadExportThreads(): Int {
+        val saved = prefsRef.getInt(KEY_EXPORT_THREADS, DEFAULT_EXPORT_THREADS)
+        return normalizeExportThreads(saved)
+    }
+
+    private fun loadExportAsCbzDefault(): Boolean {
+        return prefsRef.getBoolean(KEY_EXPORT_AS_CBZ, false)
+    }
+
+    private fun normalizeExportThreads(value: Int): Int {
+        return value.coerceIn(MIN_EXPORT_THREADS, MAX_EXPORT_THREADS)
+    }
+
+    companion object {
+        private const val KEY_EXPORT_THREADS = "export_threads"
+        private const val KEY_EXPORT_AS_CBZ = "export_as_cbz"
+        private const val DEFAULT_EXPORT_THREADS = 2
+        private const val MIN_EXPORT_THREADS = 1
+        private const val MAX_EXPORT_THREADS = 16
+    }
 }

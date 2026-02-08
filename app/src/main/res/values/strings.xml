@@ -118,6 +118,11 @@
     <string name="export_directory_required">请在内部储存/Documents/manga-translator 选择导出目录</string>
     <string name="export_success_title">导出成功</string>
     <string name="export_success_message">文件已导出到：%1$s</string>
+    <string name="export_options_title">导出参数</string>
+    <string name="export_thread_hint">导出线程数 (1-16)</string>
+    <string name="export_thread_invalid">线程数无效，请输入 1-16</string>
+    <string name="export_as_cbz_option">导出为 CBZ</string>
+    <string name="export_path_hint_format">导出路径：%1$s</string>
     <string name="api_request_failed_title">API 调用失败</string>
     <string name="api_request_failed_message">请求失败（%1$s），翻译已终止。</string>
     <string name="model_response_failed_title">模型返回异常</string>
