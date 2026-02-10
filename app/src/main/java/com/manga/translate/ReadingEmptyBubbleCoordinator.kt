@@ -40,7 +40,7 @@ class ReadingEmptyBubbleCoordinator(
             if (text.length <= 2) {
                 removedIds.add(bubble.id)
             } else {
-                candidates.add(OcrBubble(bubble.id, bubble.rect, text))
+                candidates.add(OcrBubble(bubble.id, bubble.rect, text, bubble.source))
             }
         }
 

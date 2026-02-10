@@ -675,7 +675,7 @@ class ReadingFragment : Fragment() {
         val top = (height - bubbleHeight) / 2f
         val rect = RectF(left, top, left + bubbleWidth, top + bubbleHeight)
         val nextId = (translation.bubbles.maxOfOrNull { it.id } ?: -1) + 1
-        val newBubble = BubbleTranslation(nextId, rect, "")
+        val newBubble = BubbleTranslation(nextId, rect, "", BubbleSource.MANUAL)
         val updated = translation.copy(bubbles = translation.bubbles + newBubble)
         currentTranslation = updated
         binding.translationOverlay.setTranslations(updated)

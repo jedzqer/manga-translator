@@ -40,7 +40,7 @@ class TranslationPipeline(context: Context) {
         val translatable = page.bubbles.filter { it.text.isNotBlank() }
         if (translatable.isEmpty()) {
             val emptyTranslations = page.bubbles.map {
-                BubbleTranslation(it.id, it.rect, "")
+                BubbleTranslation(it.id, it.rect, "", it.source)
             }
             return@withContext TranslationResult(
                 imageFile.name,
@@ -62,7 +62,7 @@ class TranslationPipeline(context: Context) {
         if (translated == null) {
             val fallback = page.bubbles.map { bubble ->
                 val text = bubble.text.trim()
-                BubbleTranslation(bubble.id, bubble.rect, if (text.isBlank()) "" else text)
+                BubbleTranslation(bubble.id, bubble.rect, if (text.isBlank()) "" else text, bubble.source)
             }
             return@withContext TranslationResult(
                 imageFile.name,
@@ -93,7 +93,7 @@ class TranslationPipeline(context: Context) {
         }
         val bubbles = page.bubbles.map { bubble ->
             val text = translationMap[bubble.id] ?: ""
-            BubbleTranslation(bubble.id, bubble.rect, text)
+            BubbleTranslation(bubble.id, bubble.rect, text, bubble.source)
         }
         AppLogger.log("Pipeline", "Translation finished for ${imageFile.name}")
         TranslationResult(imageFile.name, page.width, page.height, bubbles)
@@ -134,7 +134,7 @@ class TranslationPipeline(context: Context) {
                 val lineRects = lineDetector?.detectLines(bitmap).orEmpty()
                 val lines = recognizeEnglishLines(bitmap, lineRects, ocrEngine)
                 for ((index, line) in lines.withIndex()) {
-                    bubbles.add(OcrBubble(index, line.rect, line.text))
+                    bubbles.add(OcrBubble(index, line.rect, line.text, BubbleSource.TEXT_DETECTOR))
                 }
             } else {
                 for ((bubbleId, rect) in bubbleRects.withIndex()) {
@@ -146,7 +146,7 @@ class TranslationPipeline(context: Context) {
                     } else {
                         lines.joinToString("\n") { it.text }
                     }
-                    bubbles.add(OcrBubble(bubbleId, rect, text))
+                    bubbles.add(OcrBubble(bubbleId, rect, text, BubbleSource.BUBBLE_DETECTOR))
                 }
             }
             val result = PageOcrResult(imageFile, bitmap.width, bitmap.height, bubbles)
@@ -174,10 +174,16 @@ class TranslationPipeline(context: Context) {
         allRects.addAll(bubbleRects)
         allRects.addAll(textRects)
         val bubbles = ArrayList<OcrBubble>(allRects.size)
+        val bubbleDetectorCount = bubbleRects.size
         for ((bubbleId, rect) in allRects.withIndex()) {
             val crop = cropBitmap(bitmap, rect) ?: continue
             val text = ocrEngine.recognize(crop).trim()
-            bubbles.add(OcrBubble(bubbleId, rect, text))
+            val source = if (bubbleId < bubbleDetectorCount) {
+                BubbleSource.BUBBLE_DETECTOR
+            } else {
+                BubbleSource.TEXT_DETECTOR
+            }
+            bubbles.add(OcrBubble(bubbleId, rect, text, source))
         }
         val result = PageOcrResult(imageFile, bitmap.width, bitmap.height, bubbles)
         ocrStore.save(imageFile, result)
@@ -194,7 +200,7 @@ class TranslationPipeline(context: Context) {
         val translatable = page.bubbles.filter { it.text.isNotBlank() }
         if (translatable.isEmpty()) {
             val emptyTranslations = page.bubbles.map {
-                BubbleTranslation(it.id, it.rect, "")
+                BubbleTranslation(it.id, it.rect, "", it.source)
             }
             return@withContext TranslationResult(
                 page.imageFile.name,
@@ -211,7 +217,7 @@ class TranslationPipeline(context: Context) {
         val translated = llmClient.translate(pageText, glossary, promptAsset)
         if (translated == null) {
             val fallback = page.bubbles.map { bubble ->
-                BubbleTranslation(bubble.id, bubble.rect, bubble.text)
+                BubbleTranslation(bubble.id, bubble.rect, bubble.text, bubble.source)
             }
             return@withContext TranslationResult(
                 page.imageFile.name,
@@ -239,7 +245,7 @@ class TranslationPipeline(context: Context) {
         }
         val bubbles = page.bubbles.map { bubble ->
             val text = translationMap[bubble.id] ?: ""
-            BubbleTranslation(bubble.id, bubble.rect, text)
+            BubbleTranslation(bubble.id, bubble.rect, text, bubble.source)
         }
         TranslationResult(page.imageFile.name, page.width, page.height, bubbles)
     }
@@ -463,7 +469,8 @@ class TranslationPipeline(context: Context) {
 data class OcrBubble(
     val id: Int,
     val rect: RectF,
-    val text: String
+    val text: String,
+    val source: BubbleSource = BubbleSource.UNKNOWN
 )
 
 data class PageOcrResult(

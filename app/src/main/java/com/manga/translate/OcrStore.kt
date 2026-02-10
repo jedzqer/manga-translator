@@ -23,7 +23,8 @@ class OcrStore {
                     item.optDouble("bottom").toFloat()
                 )
                 val text = item.optString("text", "")
-                bubbles.add(OcrBubble(id, rect, text))
+                val source = BubbleSource.fromJson(if (item.has("source")) item.optString("source") else null)
+                bubbles.add(OcrBubble(id, rect, text, source))
             }
             PageOcrResult(
                 imageFile = imageFile,
@@ -52,6 +53,7 @@ class OcrStore {
                 .put("right", bubble.rect.right)
                 .put("bottom", bubble.rect.bottom)
                 .put("text", bubble.text)
+                .put("source", bubble.source.jsonValue)
             bubbles.put(item)
         }
         json.put("bubbles", bubbles)

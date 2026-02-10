@@ -259,8 +259,25 @@ internal class FolderEmbedCoordinator(
         outputDir: File
     ): Boolean {
         val bitmap = BitmapFactory.decodeFile(sourceImage.absolutePath) ?: return false
-        val eraseMask = buildEraseMask(bitmap, translation, detector)
-        val prefill = applyUniformWhiteCover(bitmap, eraseMask, translation)
+        val modelBubbleMask = buildEraseMask(
+            bitmap = bitmap,
+            translation = translation,
+            detector = detector,
+            includeBubble = { it.source == BubbleSource.BUBBLE_DETECTOR },
+            extraDilateIterations = MODEL_BUBBLE_EXTRA_DILATE_ITERATIONS
+        )
+        val afterModelBubbleWhite = applyDirectWhiteCover(bitmap, modelBubbleMask)
+        val nonModelTranslation = translation.copy(
+            bubbles = translation.bubbles.filter { it.source != BubbleSource.BUBBLE_DETECTOR }
+        )
+        val eraseMask = buildEraseMask(
+            bitmap = afterModelBubbleWhite,
+            translation = nonModelTranslation,
+            detector = detector,
+            includeBubble = { true },
+            extraDilateIterations = 0
+        )
+        val prefill = applyUniformWhiteCover(afterModelBubbleWhite, eraseMask, nonModelTranslation)
         val inpainted = if (prefill.remainingMask.any { it }) {
             inpainter.inpaint(prefill.preparedBitmap, prefill.remainingMask)
         } else {
@@ -274,6 +291,9 @@ internal class FolderEmbedCoordinator(
             rendered.recycle()
         }
         prefill.preparedBitmap.recycle()
+        if (afterModelBubbleWhite !== bitmap) {
+            afterModelBubbleWhite.recycle()
+        }
         if (inpainted !== bitmap) {
             inpainted.recycle()
         }
@@ -284,13 +304,16 @@ internal class FolderEmbedCoordinator(
     private fun buildEraseMask(
         bitmap: Bitmap,
         translation: TranslationResult,
-        detector: TextMaskDetector
+        detector: TextMaskDetector,
+        includeBubble: (BubbleTranslation) -> Boolean,
+        extraDilateIterations: Int
     ): BooleanArray {
         val width = bitmap.width
         val height = bitmap.height
         val mask = BooleanArray(width * height)
 
         for (bubble in translation.bubbles) {
+            if (!includeBubble(bubble)) continue
             val expandBase = maxOf(2f, minOf(bubble.rect.width(), bubble.rect.height()) * BUBBLE_MASK_EXPAND_RATIO)
             val left = (bubble.rect.left - expandBase).toInt().coerceIn(0, width - 1)
             val top = (bubble.rect.top - expandBase).toInt().coerceIn(0, height - 1)
@@ -329,7 +352,24 @@ internal class FolderEmbedCoordinator(
             }
             crop.recycle()
         }
-        return dilateMask(mask, width, height, GLOBAL_DILATE_ITERATIONS)
+        return dilateMask(mask, width, height, GLOBAL_DILATE_ITERATIONS + extraDilateIterations)
+    }
+
+    private fun applyDirectWhiteCover(source: Bitmap, mask: BooleanArray): Bitmap {
+        if (!mask.any { it }) {
+            return source.copy(Bitmap.Config.ARGB_8888, true)
+        }
+        val width = source.width
+        val height = source.height
+        val prepared = source.copy(Bitmap.Config.ARGB_8888, true)
+        for (y in 0 until height) {
+            val row = y * width
+            for (x in 0 until width) {
+                if (!mask[row + x]) continue
+                prepared.setPixel(x, y, Color.WHITE)
+            }
+        }
+        return prepared
     }
 
     private fun applyUniformWhiteCover(
@@ -559,6 +599,7 @@ internal class FolderEmbedCoordinator(
     companion object {
         private const val BUBBLE_MASK_EXPAND_RATIO = 0.1f
         private const val GLOBAL_DILATE_ITERATIONS = 3
+        private const val MODEL_BUBBLE_EXTRA_DILATE_ITERATIONS = 1
         private const val WHITE_COVER_EXPAND_RATIO = 0.1f
         private const val WHITE_COVER_MIN_EXPAND = 3
         private const val WHITE_BG_MIN_LUMA = 220.0
