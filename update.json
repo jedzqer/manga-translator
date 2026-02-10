@@ -2,7 +2,7 @@
   "versionCode": 20,
     "versionName": "2.2.1",
     "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/2.2.1/app-release.apk",
-    "changelog": "新增嵌字功能，一键嵌字",
+    "changelog": "新增嵌字功能，嵌字前建议先使用新版本重新翻译漫画",
   "history": [
     {
       "versionName": "2.2.0",
