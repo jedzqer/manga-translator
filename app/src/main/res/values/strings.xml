@@ -138,6 +138,7 @@
     <string name="export_thread_hint">导出线程数 (1-16)</string>
     <string name="export_thread_invalid">线程数无效，请输入 1-16</string>
     <string name="export_as_cbz_option">导出为 CBZ</string>
+    <string name="export_embedded_images_option">导出嵌入图片</string>
     <string name="export_path_hint_format">导出路径：%1$s</string>
     <string name="api_request_failed_title">API 调用失败</string>
     <string name="api_request_failed_message">请求失败（%1$s），翻译已终止。</string>

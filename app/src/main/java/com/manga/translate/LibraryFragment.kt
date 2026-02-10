@@ -211,6 +211,7 @@ class LibraryFragment : Fragment() {
             context = requireContext(),
             repository = repository,
             translationStore = translationStore,
+            embeddedStateStore = embeddedStateStore,
             settingsStore = settingsStore,
             prefs = prefs,
             preferencesGateway = preferencesGateway,
@@ -441,19 +442,23 @@ class LibraryFragment : Fragment() {
 
     private fun exportFolder() {
         val folder = currentFolder ?: return
+        val images = repository.listImages(folder)
+        val hasEmbeddedImages = hasCompleteEmbeddedImagesForExport(folder, images)
         dialogs.showExportOptionsDialog(
             context = requireContext(),
             defaultThreads = importExportCoordinator.getExportThreadCount(),
             defaultExportAsCbz = importExportCoordinator.getExportAsCbzDefault(),
+            hasEmbeddedImages = hasEmbeddedImages,
             exportRootPathHint = importExportCoordinator.buildExportRootPathPreview()
-        ) { exportThreads, exportAsCbz ->
+        ) { exportThreads, exportAsCbz, exportEmbeddedImages ->
             importExportCoordinator.exportFolder(
                 uiContext = requireContext(),
                 folder = folder,
-                images = repository.listImages(folder),
+                images = images,
                 scope = viewLifecycleOwner.lifecycleScope,
                 exportThreads = exportThreads,
                 exportAsCbz = exportAsCbz,
+                exportEmbeddedImages = exportEmbeddedImages,
                 requestExportDirectoryPermission = { initialUri -> pickExportTree.launch(initialUri) },
                 requestLegacyPermission = {
                     requestStoragePermission.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -585,6 +590,19 @@ class LibraryFragment : Fragment() {
             embeddedMode = true,
             forcedBubbleMode = false
         )
+    }
+
+    private fun hasCompleteEmbeddedImagesForExport(folder: File, originalImages: List<File>): Boolean {
+        if (!embeddedStateStore.isEmbedded(folder)) {
+            return false
+        }
+        if (originalImages.isEmpty()) {
+            return false
+        }
+        val embeddedByName = embeddedStateStore
+            .listEmbeddedImages(folder)
+            .associateBy { it.name }
+        return originalImages.all { embeddedByName[it.name] != null }
     }
 
     private fun setEmbedActionsEnabled(enabled: Boolean) {

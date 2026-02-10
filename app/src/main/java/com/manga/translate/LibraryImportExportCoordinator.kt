@@ -35,6 +35,7 @@ internal class LibraryImportExportCoordinator(
     context: Context,
     private val repository: LibraryRepository,
     private val translationStore: TranslationStore,
+    private val embeddedStateStore: EmbeddedStateStore,
     private val settingsStore: SettingsStore,
     prefs: SharedPreferences,
     private val preferencesGateway: LibraryPreferencesGateway,
@@ -47,6 +48,7 @@ internal class LibraryImportExportCoordinator(
     private var pendingExportAfterExportTreeSelection = false
     private var pendingExportThreads = loadExportThreads()
     private var pendingExportAsCbz = loadExportAsCbzDefault()
+    private var pendingExportEmbeddedImages = false
 
     fun getExportThreadCount(): Int = loadExportThreads()
     fun getExportAsCbzDefault(): Boolean = loadExportAsCbzDefault()
@@ -214,6 +216,7 @@ internal class LibraryImportExportCoordinator(
         scope: CoroutineScope,
         exportThreads: Int,
         exportAsCbz: Boolean,
+        exportEmbeddedImages: Boolean,
         requestExportDirectoryPermission: (Uri?) -> Unit,
         requestLegacyPermission: () -> Unit,
         onExitSelectionMode: () -> Unit,
@@ -222,6 +225,7 @@ internal class LibraryImportExportCoordinator(
         if (folder == null) return
         pendingExportThreads = normalizeExportThreads(exportThreads)
         pendingExportAsCbz = exportAsCbz
+        pendingExportEmbeddedImages = exportEmbeddedImages
         prefsRef.edit()
             .putInt(KEY_EXPORT_THREADS, pendingExportThreads)
             .putBoolean(KEY_EXPORT_AS_CBZ, pendingExportAsCbz)
@@ -253,6 +257,7 @@ internal class LibraryImportExportCoordinator(
             scope = scope,
             exportThreads = pendingExportThreads,
             exportAsCbz = pendingExportAsCbz,
+            exportEmbeddedImages = pendingExportEmbeddedImages,
             onExitSelectionMode = onExitSelectionMode,
             onSetExportEnabled = onSetExportEnabled
         )
@@ -274,6 +279,7 @@ internal class LibraryImportExportCoordinator(
             scope = scope,
             exportThreads = pendingExportThreads,
             exportAsCbz = pendingExportAsCbz,
+            exportEmbeddedImages = pendingExportEmbeddedImages,
             onExitSelectionMode = onExitSelectionMode,
             onSetExportEnabled = onSetExportEnabled
         )
@@ -286,11 +292,13 @@ internal class LibraryImportExportCoordinator(
         scope: CoroutineScope,
         exportThreads: Int,
         exportAsCbz: Boolean,
+        exportEmbeddedImages: Boolean,
         onExitSelectionMode: () -> Unit,
         onSetExportEnabled: (Boolean) -> Unit
     ) {
         onExitSelectionMode()
-        if (images.isEmpty()) {
+        val exportImages = resolveExportImages(folder, images, exportEmbeddedImages)
+        if (exportImages.isEmpty()) {
             ui.setFolderStatus(appContext.getString(R.string.folder_images_empty))
             return
         }
@@ -306,11 +314,11 @@ internal class LibraryImportExportCoordinator(
             appContext,
             appContext.getString(R.string.export_keepalive_title),
             appContext.getString(R.string.translation_keepalive_message),
-            appContext.getString(R.string.exporting_progress, 0, images.size)
+            appContext.getString(R.string.exporting_progress, 0, exportImages.size)
         )
         TranslationKeepAliveService.updateStatus(
             appContext,
-            appContext.getString(R.string.exporting_progress, 0, images.size),
+            appContext.getString(R.string.exporting_progress, 0, exportImages.size),
             appContext.getString(R.string.export_keepalive_title),
             appContext.getString(R.string.translation_keepalive_message)
         )
@@ -337,27 +345,27 @@ internal class LibraryImportExportCoordinator(
                     ui.setFolderStatus(appContext.getString(R.string.export_failed))
                     return@launch
                 }
-                ui.setFolderStatus(appContext.getString(R.string.exporting_progress, 0, images.size))
+                ui.setFolderStatus(appContext.getString(R.string.exporting_progress, 0, exportImages.size))
                 var successPathHint: String? = null
 
                 if (exportAsCbz) {
                     val result = exportCbzWithBubbles(
                         context = appContext,
                         folder = folder,
-                        images = images,
+                        images = exportImages,
                         verticalLayoutEnabled = verticalLayoutEnabled,
                         exportThreads = normalizeExportThreads(exportThreads),
                         exportTreeUri = exportTreeUri
                     ) { count ->
                         withContext(Dispatchers.Main) {
                             ui.setFolderStatus(
-                                appContext.getString(R.string.exporting_progress, count, images.size)
+                                appContext.getString(R.string.exporting_progress, count, exportImages.size)
                             )
                             TranslationKeepAliveService.updateProgress(
                                 appContext,
                                 count,
-                                images.size,
-                                appContext.getString(R.string.exporting_progress, count, images.size),
+                                exportImages.size,
+                                appContext.getString(R.string.exporting_progress, count, exportImages.size),
                                 appContext.getString(R.string.export_keepalive_title),
                                 appContext.getString(R.string.translation_keepalive_message)
                             )
@@ -371,7 +379,7 @@ internal class LibraryImportExportCoordinator(
                     val hasFailures = AtomicBoolean(false)
 
                     coroutineScope {
-                        val tasks = images.map { image ->
+                        val tasks = exportImages.map { image ->
                             async(Dispatchers.IO) {
                                 semaphore.withPermit {
                                     val renderer = BubbleRenderer(appContext)
@@ -389,13 +397,13 @@ internal class LibraryImportExportCoordinator(
                                     val count = exportedCount.incrementAndGet()
                                     withContext(Dispatchers.Main) {
                                         ui.setFolderStatus(
-                                            appContext.getString(R.string.exporting_progress, count, images.size)
+                                            appContext.getString(R.string.exporting_progress, count, exportImages.size)
                                         )
                                         TranslationKeepAliveService.updateProgress(
                                             appContext,
                                             count,
-                                            images.size,
-                                            appContext.getString(R.string.exporting_progress, count, images.size),
+                                            exportImages.size,
+                                            appContext.getString(R.string.exporting_progress, count, exportImages.size),
                                             appContext.getString(R.string.export_keepalive_title),
                                             appContext.getString(R.string.translation_keepalive_message)
                                         )
@@ -428,6 +436,30 @@ internal class LibraryImportExportCoordinator(
                 TranslationKeepAliveService.stop(appContext)
             }
         }
+    }
+
+    private fun resolveExportImages(
+        folder: File,
+        originalImages: List<File>,
+        exportEmbeddedImages: Boolean
+    ): List<File> {
+        if (!exportEmbeddedImages) {
+            return originalImages
+        }
+        if (!embeddedStateStore.isEmbedded(folder)) {
+            return originalImages
+        }
+        val embeddedByName = embeddedStateStore.listEmbeddedImages(folder).associateBy { it.name }
+        val ordered = ArrayList<File>(originalImages.size)
+        for (image in originalImages) {
+            val embedded = embeddedByName[image.name]
+            if (embedded == null) {
+                AppLogger.log("Library", "Embedded export fallback to source image: ${image.name}")
+                return originalImages
+            }
+            ordered.add(embedded)
+        }
+        return ordered
     }
 
     private fun resolveExportDirectory(

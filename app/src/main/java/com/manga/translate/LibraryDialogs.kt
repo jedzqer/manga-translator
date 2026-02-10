@@ -130,8 +130,9 @@ internal class LibraryDialogs {
         context: Context,
         defaultThreads: Int,
         defaultExportAsCbz: Boolean,
+        hasEmbeddedImages: Boolean,
         exportRootPathHint: String,
-        onConfirm: (Int, Boolean) -> Unit
+        onConfirm: (Int, Boolean, Boolean) -> Unit
     ) {
         val input = EditText(context).apply {
             hint = context.getString(R.string.export_thread_hint)
@@ -143,6 +144,14 @@ internal class LibraryDialogs {
         val cbzCheckBox = CheckBox(context).apply {
             text = context.getString(R.string.export_as_cbz_option)
             isChecked = defaultExportAsCbz
+        }
+        val embeddedCheckBox = CheckBox(context).apply {
+            text = context.getString(R.string.export_embedded_images_option)
+            isChecked = hasEmbeddedImages
+            isEnabled = hasEmbeddedImages
+            if (!hasEmbeddedImages) {
+                alpha = 0.5f
+            }
         }
         val pathHintView = TextView(context).apply {
             val topMargin = TypedValue.applyDimension(
@@ -181,6 +190,13 @@ internal class LibraryDialogs {
                 )
             )
             addView(
+                embeddedCheckBox,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+            addView(
                 pathHintView,
                 LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -198,7 +214,7 @@ internal class LibraryDialogs {
                     Toast.makeText(context, R.string.export_thread_invalid, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                onConfirm(threadCount, cbzCheckBox.isChecked)
+                onConfirm(threadCount, cbzCheckBox.isChecked, embeddedCheckBox.isChecked)
             }
             .show()
     }
