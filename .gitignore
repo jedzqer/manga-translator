@@ -50,4 +50,5 @@ Thumbs.db
 
 # Model weights (local only)
 assets/*.onnx
+!assets/ysgyolo_1.2_OS1.0.onnx
 assets/*.pt

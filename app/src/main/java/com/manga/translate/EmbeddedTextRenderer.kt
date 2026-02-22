@@ -15,10 +15,10 @@ class EmbeddedTextRenderer {
         color = 0xFF1B1B1B.toInt()
     }
     private val textBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xEEFFFFFF.toInt()
+        color = 0xFFFFFFFF.toInt()
         style = Paint.Style.FILL
     }
-    private val maxPaddingRatio = 0.2f
+    private val maxPaddingRatio = 0.12f
 
     fun render(
         source: Bitmap,
@@ -221,25 +221,27 @@ class EmbeddedTextRenderer {
         val bottom = baseline + fontMetrics.descent
         if (right <= left || bottom <= top) return
         val glyphHeight = bottom - top
-        val glyphEdge = max(charWidth, glyphHeight)
-        val baseSide = glyphEdge + (maxNeighborGap.coerceAtLeast(0f) * 0.5f)
-        val basePadding = ((baseSide - glyphEdge) / 2f).coerceAtLeast(0f)
+        val neighborPad = (maxNeighborGap.coerceAtLeast(0f) * 0.2f).coerceAtLeast(0f)
+        val basePadX = max(charWidth * 0.08f, 0.6f) + neighborPad
+        val basePadY = max(glyphHeight * 0.06f, 0.6f)
         val minPadding = computeMinPadding(maxRect)
-        val maxPadding = (glyphEdge * maxPaddingRatio).coerceAtLeast(minPadding)
-        val pad = basePadding.coerceIn(minPadding, maxPadding)
+        val maxPadX = (charWidth * maxPaddingRatio).coerceAtLeast(minPadding)
+        val maxPadY = (glyphHeight * maxPaddingRatio).coerceAtLeast(minPadding)
+        val padX = basePadX.coerceIn(minPadding * 0.5f, maxPadX)
+        val padY = basePadY.coerceIn(minPadding * 0.5f, maxPadY)
         val bg = RectF(
-            (left - pad).coerceAtLeast(maxRect.left),
-            (top - pad).coerceAtLeast(maxRect.top),
-            (right + pad).coerceAtMost(maxRect.right),
-            (bottom + pad).coerceAtMost(maxRect.bottom)
+            (left - padX).coerceAtLeast(maxRect.left),
+            (top - padY).coerceAtLeast(maxRect.top),
+            (right + padX).coerceAtMost(maxRect.right),
+            (bottom + padY).coerceAtMost(maxRect.bottom)
         )
-        val radius = (min(bg.width(), bg.height()) * 0.2f).coerceAtLeast(2f)
+        val radius = (min(bg.width(), bg.height()) * 0.12f).coerceAtLeast(1f)
         canvas.drawRoundRect(bg, radius, radius, textBackgroundPaint)
     }
 
     private fun computeMinPadding(maxRect: RectF): Float {
-        val scaled = (min(maxRect.width(), maxRect.height()) / 600f) * 3f
-        return scaled.coerceIn(2f, 4f)
+        val scaled = (min(maxRect.width(), maxRect.height()) / 600f) * 1.8f
+        return scaled.coerceIn(0.8f, 2f)
     }
 
     private fun computeHorizontalLineGaps(

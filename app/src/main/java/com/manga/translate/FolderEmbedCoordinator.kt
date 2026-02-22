@@ -345,23 +345,12 @@ internal class FolderEmbedCoordinator(
             } else {
                 cropMask
             }
-            var hasTextPixel = false
             for (y in 0 until cropH) {
                 val cropRow = y * cropW
                 val fullRow = (top + y) * width + left
                 for (x in 0 until cropW) {
                     if (!expandedCropMask[cropRow + x]) continue
-                    hasTextPixel = true
                     mask[fullRow + x] = true
-                }
-            }
-            if (!hasTextPixel) {
-                // Keep behavior deterministic if detector misses text inside a bubble.
-                for (y in top until bottom) {
-                    val row = y * width
-                    for (x in left until right) {
-                        mask[row + x] = true
-                    }
                 }
             }
             crop.recycle()
@@ -612,12 +601,12 @@ internal class FolderEmbedCoordinator(
 
     companion object {
         private const val DEFAULT_BUBBLE_MASK_EXPAND_RATIO = 0.1f
-        private const val MODEL_BUBBLE_MASK_GROW_RATIO = 0.1f
-        private const val MAX_PER_BUBBLE_MASK_GROW_PIXELS = 24
-        private const val GLOBAL_DILATE_ITERATIONS = 3
-        private const val MODEL_BUBBLE_EXTRA_DILATE_ITERATIONS = 1
-        private const val WHITE_COVER_EXPAND_RATIO = 0.1f
-        private const val WHITE_COVER_MIN_EXPAND = 3
+        private const val MODEL_BUBBLE_MASK_GROW_RATIO = 0.02f
+        private const val MAX_PER_BUBBLE_MASK_GROW_PIXELS = 8
+        private const val GLOBAL_DILATE_ITERATIONS = 1
+        private const val MODEL_BUBBLE_EXTRA_DILATE_ITERATIONS = 0
+        private const val WHITE_COVER_EXPAND_RATIO = 0.04f
+        private const val WHITE_COVER_MIN_EXPAND = 1
         private const val WHITE_BG_MIN_LUMA = 220.0
         private const val WHITE_BG_MAX_STD = 18.0
         private const val WHITE_BG_MAX_SPREAD = 20.0

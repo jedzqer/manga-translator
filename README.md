@@ -62,6 +62,10 @@
 将以下模型文件放入 `assets/`：
 - `comic-speech-bubble-detector.onnx`（气泡检测）
 - `encoder_model.onnx`、`decoder_model.onnx`（OCR）
+- `en_PP-OCRv5_rec_mobile_infer.onnx`（英文 OCR）
+- `ysgyolo_1.2_OS1.0.onnx`（文本补检 + 文字蒙版）
+- `Multilingual_PP-OCRv3_det_infer.onnx`（英文行检测）
+- `migan_512.onnx`、`migan_512.onnx.data`（嵌字抹除）
 
 模型下载链接：
 - 气泡检测模型：https://huggingface.co/ogkalu/comic-speech-bubble-detector-yolov8m
@@ -74,3 +78,9 @@
 - `app/src/main/java/com/manga/translate/VersionInfo.kt`
 - `app/build.gradle.kts`
 - `update.json`
+
+## 🙏 致谢
+
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) - 提供 OCR 模型支持
+- [kha-white/manga-ocr](https://github.com/kha-white/manga-ocr) - MangaOCR 模型支持
+- 所有用户的支持

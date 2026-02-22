@@ -12,7 +12,7 @@ import java.nio.FloatBuffer
 
 /**
  * 英文OCR识别器，基于PP-OCRv5识别模型
- * 需要配合TextDetector使用Multilingual_PP-OCRv3_det_infer.onnx进行文字检测
+ * 需要配合EnglishLineDetector使用Multilingual_PP-OCRv3_det_infer.onnx进行英文行检测
  */
 class EnglishOcr(private val context: Context) : OcrEngine {
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment()

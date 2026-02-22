@@ -4,136 +4,91 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
-import ai.onnxruntime.TensorInfo
-import java.io.File
-import java.io.FileOutputStream
-import java.nio.FloatBuffer
-import kotlin.math.min
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
+import kotlin.math.max
+import kotlin.math.sqrt
 
 class TextMaskDetector(
-    private val context: Context,
-    private val modelAssetName: String = "Multilingual_PP-OCRv3_det_infer.onnx"
+    context: Context,
+    modelAssetName: String = "ysgyolo_1.2_OS1.0.onnx"
 ) {
-    private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
-    private val session: OrtSession = createSession()
-    private val inputName: String
-    private val inputWidth: Int
-    private val inputHeight: Int
-
-    init {
-        val input = session.inputInfo.entries.first()
-        inputName = input.key
-        val shape = (input.value.info as TensorInfo).shape
-        inputHeight = (shape.getOrNull(2) ?: 960L).toInt().coerceAtLeast(1)
-        inputWidth = (shape.getOrNull(3) ?: 960L).toInt().coerceAtLeast(1)
-    }
+    private val detector = YsgYoloTextDetector(context, modelAssetName)
 
     fun detectMask(bitmap: Bitmap): BooleanArray {
         if (bitmap.width <= 1 || bitmap.height <= 1) {
             return BooleanArray(bitmap.width * bitmap.height)
         }
-        val preprocessed = preprocess(bitmap)
-        preprocessed.tensor.use { tensor ->
-            session.run(mapOf(inputName to tensor)).use { outputs ->
-                val output = outputs[0]
-                val outputShape = (output.info as TensorInfo).shape
-                val probMap = extractProbMap(output.value, outputShape)
-                    ?: return BooleanArray(bitmap.width * bitmap.height)
-                val rawMask = buildMask(probMap, preprocessed.outputWidth, preprocessed.outputHeight, PROB_THRESHOLD)
-                val dilated = dilateMask(rawMask, preprocessed.outputWidth, preprocessed.outputHeight, DETECTOR_DILATE_ITERATIONS)
-                return mapMaskToOriginal(dilated, preprocessed)
-            }
-        }
-    }
-
-    private fun preprocess(bitmap: Bitmap): PreprocessResult {
-        val srcW = bitmap.width
-        val srcH = bitmap.height
-        val scale = min(inputWidth.toFloat() / srcW, inputHeight.toFloat() / srcH).coerceAtLeast(1e-6f)
-        val newW = (srcW * scale).toInt().coerceAtLeast(1)
-        val newH = (srcH * scale).toInt().coerceAtLeast(1)
-        val resized = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
-        val padded = Bitmap.createBitmap(inputWidth, inputHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(padded)
-        canvas.drawColor(Color.BLACK)
-        val padX = ((inputWidth - newW) / 2f).coerceAtLeast(0f)
-        val padY = ((inputHeight - newH) / 2f).coerceAtLeast(0f)
-        canvas.drawBitmap(resized, padX, padY, null)
-
-        val input = FloatArray(3 * inputWidth * inputHeight)
-        var offset = 0
-        for (y in 0 until inputHeight) {
-            for (x in 0 until inputWidth) {
-                val pixel = padded.getPixel(x, y)
-                val r = ((pixel shr 16) and 0xFF) / 255f
-                val g = ((pixel shr 8) and 0xFF) / 255f
-                val b = (pixel and 0xFF) / 255f
-                input[offset] = (b - MEAN[0]) / STD[0]
-                input[offset + inputWidth * inputHeight] = (g - MEAN[1]) / STD[1]
-                input[offset + 2 * inputWidth * inputHeight] = (r - MEAN[2]) / STD[2]
-                offset++
-            }
-        }
-        val tensor = OnnxTensor.createTensor(
-            env,
-            FloatBuffer.wrap(input),
-            longArrayOf(1, 3, inputHeight.toLong(), inputWidth.toLong())
+        val detections = detector.detect(
+            bitmap = bitmap,
+            confThreshold = YSG_CONF_THRESHOLD,
+            iouThreshold = YSG_NMS_IOU_THRESHOLD
         )
-        return PreprocessResult(
-            tensor = tensor,
-            outputWidth = inputWidth,
-            outputHeight = inputHeight,
-            ratioW = newW / srcW.toFloat(),
-            ratioH = newH / srcH.toFloat(),
-            padW = padX,
-            padH = padY,
-            originalWidth = srcW,
-            originalHeight = srcH
+        if (detections.isEmpty()) {
+            return BooleanArray(bitmap.width * bitmap.height)
+        }
+
+        val width = bitmap.width
+        val height = bitmap.height
+        val maskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(maskBitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFFFFF.toInt()
+            style = Paint.Style.FILL
+        }
+        for (detection in detections) {
+            val corners = expandCorners(detection.corners, width, height)
+            val path = Path().apply {
+                moveTo(corners[0], corners[1])
+                lineTo(corners[2], corners[3])
+                lineTo(corners[4], corners[5])
+                lineTo(corners[6], corners[7])
+                close()
+            }
+            canvas.drawPath(path, paint)
+        }
+        val mask = BooleanArray(width * height)
+        for (y in 0 until height) {
+            val row = y * width
+            for (x in 0 until width) {
+                mask[row + x] = (maskBitmap.getPixel(x, y) ushr 24) > 0
+            }
+        }
+        maskBitmap.recycle()
+        val refined = refineMaskWithTextPixels(bitmap, mask, width, height)
+        return dilateMask(refined, width, height, GLOBAL_DILATE_ITERATIONS)
+    }
+
+    private fun expandCorners(corners: FloatArray, width: Int, height: Int): FloatArray {
+        if (corners.size < 8) return corners
+        var cx = 0f
+        var cy = 0f
+        for (i in corners.indices step 2) {
+            cx += corners[i]
+            cy += corners[i + 1]
+        }
+        cx /= 4f
+        cy /= 4f
+        val aabb = RectF(
+            minOf(corners[0], corners[2], corners[4], corners[6]),
+            minOf(corners[1], corners[3], corners[5], corners[7]),
+            maxOf(corners[0], corners[2], corners[4], corners[6]),
+            maxOf(corners[1], corners[3], corners[5], corners[7])
         )
-    }
-
-    private fun extractProbMap(raw: Any, shape: LongArray): FloatArray? {
-        val h: Int
-        val w: Int
-        val rows: Array<*>
-        when (shape.size) {
-            4 -> {
-                h = (shape.getOrNull(2) ?: 0L).toInt()
-                w = (shape.getOrNull(3) ?: 0L).toInt()
-                val batch = raw as? Array<*> ?: return null
-                val channel = batch.firstOrNull() as? Array<*> ?: return null
-                val rowBlock = channel.firstOrNull() as? Array<*> ?: return null
-                rows = rowBlock
-            }
-            3 -> {
-                h = (shape.getOrNull(1) ?: 0L).toInt()
-                w = (shape.getOrNull(2) ?: 0L).toInt()
-                val batch = raw as? Array<*> ?: return null
-                val rowBlock = batch.firstOrNull() as? Array<*> ?: return null
-                rows = rowBlock
-            }
-            else -> return null
+        val base = max(1f, minOf(aabb.width(), aabb.height()))
+        val pad = max(MASK_BOX_EXPAND_MIN_PX, base * MASK_BOX_EXPAND_RATIO)
+        val out = FloatArray(8)
+        for (i in corners.indices step 2) {
+            val x = corners[i]
+            val y = corners[i + 1]
+            val vx = x - cx
+            val vy = y - cy
+            val len = sqrt(vx * vx + vy * vy).coerceAtLeast(1e-6f)
+            out[i] = (x + (vx / len) * pad).coerceIn(0f, width - 1f)
+            out[i + 1] = (y + (vy / len) * pad).coerceIn(0f, height - 1f)
         }
-        if (h <= 0 || w <= 0 || rows.size < h) return null
-        val prob = FloatArray(h * w)
-        for (y in 0 until h) {
-            val row = rows[y] as? FloatArray ?: return null
-            if (row.size < w) return null
-            System.arraycopy(row, 0, prob, y * w, w)
-        }
-        return prob
-    }
-
-    private fun buildMask(prob: FloatArray, width: Int, height: Int, threshold: Float): BooleanArray {
-        val total = width * height
-        val mask = BooleanArray(total)
-        for (i in 0 until total) {
-            mask[i] = prob[i] > threshold
-        }
-        return mask
+        return out
     }
 
     private fun dilateMask(mask: BooleanArray, width: Int, height: Int, iterations: Int): BooleanArray {
@@ -161,55 +116,42 @@ class TextMaskDetector(
         return current
     }
 
-    private fun mapMaskToOriginal(mask: BooleanArray, pre: PreprocessResult): BooleanArray {
-        val original = BooleanArray(pre.originalWidth * pre.originalHeight)
-        if (pre.originalWidth <= 0 || pre.originalHeight <= 0) return original
-        val outputWidth = pre.outputWidth
-        val outputHeight = pre.outputHeight
-        if (mask.size < outputWidth * outputHeight) return original
-
-        for (y in 0 until pre.originalHeight) {
-            val py = y * pre.ratioH + pre.padH
-            val iy = py.toInt().coerceIn(0, outputHeight - 1)
-            val rowOut = y * pre.originalWidth
-            val rowMask = iy * outputWidth
-            for (x in 0 until pre.originalWidth) {
-                val px = x * pre.ratioW + pre.padW
-                val ix = px.toInt().coerceIn(0, outputWidth - 1)
-                original[rowOut + x] = mask[rowMask + ix]
-            }
-        }
-        return original
-    }
-
-    private fun createSession(): OrtSession {
-        val modelFile = File(context.cacheDir, modelAssetName)
-        if (!modelFile.exists()) {
-            context.assets.open(modelAssetName).use { input ->
-                FileOutputStream(modelFile).use { output ->
-                    input.copyTo(output)
+    private fun refineMaskWithTextPixels(
+        bitmap: Bitmap,
+        candidate: BooleanArray,
+        width: Int,
+        height: Int
+    ): BooleanArray {
+        val refined = BooleanArray(candidate.size)
+        for (y in 0 until height) {
+            val row = y * width
+            for (x in 0 until width) {
+                val idx = row + x
+                if (!candidate[idx]) continue
+                val pixel = bitmap.getPixel(x, y)
+                val r = Color.red(pixel)
+                val g = Color.green(pixel)
+                val b = Color.blue(pixel)
+                val maxRgb = maxOf(r, g, b)
+                val minRgb = minOf(r, g, b)
+                val spread = maxRgb - minRgb
+                val luma = 0.299f * r + 0.587f * g + 0.114f * b
+                // Preserve likely text/outline pixels and drop near-white bubble background.
+                if (luma <= TEXT_PIXEL_MAX_LUMA || spread >= TEXT_PIXEL_MIN_SPREAD) {
+                    refined[idx] = true
                 }
             }
         }
-        return env.createSession(modelFile.absolutePath, OrtSession.SessionOptions())
+        return refined
     }
 
-    private data class PreprocessResult(
-        val tensor: OnnxTensor,
-        val outputWidth: Int,
-        val outputHeight: Int,
-        val ratioW: Float,
-        val ratioH: Float,
-        val padW: Float,
-        val padH: Float,
-        val originalWidth: Int,
-        val originalHeight: Int
-    )
-
     companion object {
-        private val MEAN = floatArrayOf(0.5f, 0.5f, 0.5f)
-        private val STD = floatArrayOf(0.5f, 0.5f, 0.5f)
-        private const val PROB_THRESHOLD = 0.22f
-        private const val DETECTOR_DILATE_ITERATIONS = 2
+        private const val YSG_CONF_THRESHOLD = 0.4f
+        private const val YSG_NMS_IOU_THRESHOLD = 0.6f
+        private const val MASK_BOX_EXPAND_RATIO = 0.04f
+        private const val MASK_BOX_EXPAND_MIN_PX = 1f
+        private const val GLOBAL_DILATE_ITERATIONS = 1
+        private const val TEXT_PIXEL_MAX_LUMA = 236f
+        private const val TEXT_PIXEL_MIN_SPREAD = 16
     }
 }
