@@ -178,8 +178,18 @@ internal class FolderTranslationCoordinator(
                 val glossary = glossaryStore.load(folder).toMutableMap()
                 val extractState = extractStateStore.load(folder)
                 val ocrResults = ArrayList<PageOcrResult>(pendingImages.size)
-                ui.setFolderStatus(appContext.getString(R.string.translation_preparing))
-                for (image in pendingImages) {
+                reportPreprocessProgress(
+                    stage = appContext.getString(R.string.folder_preprocess_stage_ocr),
+                    processed = 0,
+                    total = pendingImages.size
+                )
+                for ((index, image) in pendingImages.withIndex()) {
+                    reportPreprocessProgress(
+                        stage = appContext.getString(R.string.folder_preprocess_stage_ocr),
+                        processed = index,
+                        total = pendingImages.size,
+                        imageName = image.name
+                    )
                     val result = try {
                         translationPipeline.ocrImage(image, force, language) { }
                     } catch (e: Exception) {
@@ -191,7 +201,12 @@ internal class FolderTranslationCoordinator(
                     } else {
                         failed = true
                     }
-                    ui.setFolderStatus(appContext.getString(R.string.translation_preparing))
+                    reportPreprocessProgress(
+                        stage = appContext.getString(R.string.folder_preprocess_stage_ocr),
+                        processed = index + 1,
+                        total = pendingImages.size,
+                        imageName = image.name
+                    )
                 }
 
                 val glossaryPages = ocrResults.filterNot {
@@ -200,9 +215,13 @@ internal class FolderTranslationCoordinator(
                 }
                 val glossaryText = buildGlossaryText(glossaryPages)
                 if (glossaryText.isNotBlank()) {
-                    ui.setFolderStatus(
-                        appContext.getString(R.string.translation_preparing),
-                        appContext.getString(R.string.folder_glossary_progress)
+                    val glossaryStage = appContext.getString(R.string.folder_preprocess_stage_glossary)
+                    val glossaryImage = glossaryPages.firstOrNull()?.imageFile?.name
+                    reportPreprocessProgress(
+                        stage = glossaryStage,
+                        processed = 0,
+                        total = 1,
+                        imageName = glossaryImage.orEmpty()
                     )
                     val abstractPromptAsset = when (language) {
                         TranslationLanguage.EN_TO_ZH -> "en-zh-llm_prompts_abstract.json"
@@ -223,6 +242,12 @@ internal class FolderTranslationCoordinator(
                         }
                         extractStateStore.save(folder, extractState)
                     }
+                    reportPreprocessProgress(
+                        stage = glossaryStage,
+                        processed = 1,
+                        total = 1,
+                        imageName = glossaryImage.orEmpty()
+                    )
                 }
 
                 val maxConcurrency = settingsStore.loadMaxConcurrency()
@@ -346,5 +371,31 @@ internal class FolderTranslationCoordinator(
         } else {
             images.filterNot { translationStore.translationFileFor(it).exists() }
         }
+    }
+
+    private fun reportPreprocessProgress(
+        stage: String,
+        processed: Int,
+        total: Int,
+        imageName: String = ""
+    ) {
+        val safeTotal = total.coerceAtLeast(1)
+        val safeProcessed = processed.coerceIn(0, safeTotal)
+        val left = appContext.getString(
+            R.string.folder_preprocess_progress,
+            stage,
+            safeProcessed,
+            safeTotal
+        )
+        ui.setFolderStatus(left, imageName)
+        val content = if (imageName.isBlank()) left else "$left  $imageName"
+        TranslationKeepAliveService.updateProgress(
+            appContext,
+            safeProcessed,
+            safeTotal,
+            content,
+            appContext.getString(R.string.translation_keepalive_title),
+            appContext.getString(R.string.translation_keepalive_message)
+        )
     }
 }

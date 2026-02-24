@@ -103,14 +103,18 @@ class MainActivity : AppCompatActivity() {
         val builder = AlertDialog.Builder(this)
             .setTitle(titleOverride ?: getString(R.string.update_dialog_title, versionLabel))
             .setView(dialogView)
-            .setNegativeButton(R.string.update_dialog_cancel, null)
             .setPositiveButton(R.string.update_dialog_download) { _, _ ->
                 startDownload(updateInfo)
             }
+            .setNeutralButton(R.string.about_open_project) { _, _ ->
+                openProjectPage()
+            }
         if (showIgnoreButton) {
-            builder.setNeutralButton(R.string.update_dialog_ignore) { _, _ ->
+            builder.setNegativeButton(R.string.update_dialog_ignore) { _, _ ->
                 updateIgnoreStore.saveIgnoredVersionCode(updateInfo.versionCode)
             }
+        } else {
+            builder.setNegativeButton(R.string.update_dialog_cancel, null)
         }
         builder.show()
     }
@@ -131,9 +135,15 @@ class MainActivity : AppCompatActivity() {
         val downloadManager = getSystemService(DownloadManager::class.java)
         if (downloadManager == null) {
             AppLogger.log("MainActivity", "DownloadManager not available")
+            Toast.makeText(this, R.string.update_download_failed_manual_tip, Toast.LENGTH_LONG).show()
             return
         }
-        downloadManager.enqueue(request)
+        try {
+            downloadManager.enqueue(request)
+        } catch (e: Exception) {
+            AppLogger.log("MainActivity", "Failed to enqueue update download", e)
+            Toast.makeText(this, R.string.update_download_failed_manual_tip, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun resolveDownloadUrl(apkUrl: String): String {
@@ -150,6 +160,16 @@ class MainActivity : AppCompatActivity() {
             )
         val source = SettingsStore(this).loadLinkSource()
         return if (source == LinkSource.GITHUB) githubUrl else giteeUrl
+    }
+
+    private fun openProjectPage() {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(PROJECT_URL))
+        val manager = packageManager
+        if (intent.resolveActivity(manager) != null) {
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, PROJECT_URL, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun maybeShowCrashDialog() {
@@ -193,6 +213,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private var hasCheckedUpdate = false
+        private const val PROJECT_URL = "https://github.com/jedzqer/manga-translator"
     }
 
     private fun isNewerVersion(updateInfo: UpdateInfo): Boolean {

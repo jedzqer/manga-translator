@@ -90,7 +90,7 @@ object AppLogger {
         val files = dir.listFiles { file -> file.isFile && file.extension.equals("log", true) }
             ?.toList()
             .orEmpty()
-        return files.sortedBy { it.name }
+        return files.sortedByDescending { it.name }
     }
 
     fun listErrorLogFiles(): List<File> {
