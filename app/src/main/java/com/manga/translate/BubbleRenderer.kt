@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import androidx.core.graphics.withTranslation
 import kotlin.math.min
 
 class BubbleRenderer(context: Context) {
@@ -85,10 +86,9 @@ class BubbleRenderer(context: Context) {
             }
             val dx = rect.left
             val dy = rect.top + ((rect.height() - layout.height) / 2f).coerceAtLeast(0f)
-            canvas.save()
-            canvas.translate(dx, dy)
-            layout.draw(canvas)
-            canvas.restore()
+            canvas.withTranslation(dx, dy) {
+                layout.draw(this)
+            }
         }
     }
 

@@ -2,6 +2,8 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.core.graphics.get
+import androidx.core.graphics.scale
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -81,17 +83,12 @@ class MangaOcr(private val context: Context) : OcrEngine {
     }
 
     private fun preprocess(bitmap: Bitmap): OnnxTensor {
-        val resized = Bitmap.createScaledBitmap(
-            bitmap,
-            imageConfig.width,
-            imageConfig.height,
-            true
-        )
+        val resized = bitmap.scale(imageConfig.width, imageConfig.height)
         val input = FloatArray(3 * imageConfig.width * imageConfig.height)
         var index = 0
         for (y in 0 until imageConfig.height) {
             for (x in 0 until imageConfig.width) {
-                val pixel = resized.getPixel(x, y)
+                val pixel = resized[x, y]
                 val r = ((pixel shr 16) and 0xFF) * imageConfig.rescaleFactor
                 val g = ((pixel shr 8) and 0xFF) * imageConfig.rescaleFactor
                 val b = (pixel and 0xFF) * imageConfig.rescaleFactor

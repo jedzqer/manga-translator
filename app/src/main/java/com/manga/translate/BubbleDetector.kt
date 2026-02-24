@@ -2,6 +2,8 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.RectF
+import androidx.core.graphics.get
+import androidx.core.graphics.scale
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -37,12 +39,12 @@ class BubbleDetector(
     fun detect(bitmap: android.graphics.Bitmap): List<BubbleDetection> {
         val inputHeight = (inputShape.getOrNull(2) ?: 640L).toInt().coerceAtLeast(1)
         val inputWidth = (inputShape.getOrNull(3) ?: 640L).toInt().coerceAtLeast(1)
-        val resized = android.graphics.Bitmap.createScaledBitmap(bitmap, inputWidth, inputHeight, true)
+        val resized = bitmap.scale(inputWidth, inputHeight)
         val inputBuffer = FloatArray(3 * inputWidth * inputHeight)
         var offset = 0
         for (y in 0 until inputHeight) {
             for (x in 0 until inputWidth) {
-                val pixel = resized.getPixel(x, y)
+                val pixel = resized[x, y]
                 val r = ((pixel shr 16) and 0xFF) / 255f
                 val g = ((pixel shr 8) and 0xFF) / 255f
                 val b = (pixel and 0xFF) / 255f

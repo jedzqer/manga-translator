@@ -1,6 +1,7 @@
 package com.manga.translate
 
 import android.content.Context
+import androidx.core.content.edit
 import java.io.File
 
 class ReadingProgressStore(context: Context) {
@@ -11,9 +12,9 @@ class ReadingProgressStore(context: Context) {
     }
 
     fun save(folder: File, index: Int) {
-        prefs.edit()
-            .putInt(keyFor(folder), index)
-            .apply()
+        prefs.edit() {
+                putInt(keyFor(folder), index)
+            }
     }
 
     private fun keyFor(folder: File): String {

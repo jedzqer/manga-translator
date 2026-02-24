@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.RectF
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
+import androidx.core.graphics.scale
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -61,8 +64,8 @@ class EnglishLineDetector(
         val scale = min(inputWidth.toFloat() / srcW, inputHeight.toFloat() / srcH).coerceAtLeast(1e-6f)
         val newW = (srcW * scale).toInt().coerceAtLeast(1)
         val newH = (srcH * scale).toInt().coerceAtLeast(1)
-        val resized = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
-        val padded = Bitmap.createBitmap(inputWidth, inputHeight, Bitmap.Config.ARGB_8888)
+        val resized = bitmap.scale(newW, newH)
+        val padded = createBitmap(inputWidth, inputHeight)
         val canvas = Canvas(padded)
         canvas.drawColor(Color.BLACK)
         val padX = ((inputWidth - newW) / 2f).coerceAtLeast(0f)
@@ -73,7 +76,7 @@ class EnglishLineDetector(
         var offset = 0
         for (y in 0 until inputHeight) {
             for (x in 0 until inputWidth) {
-                val pixel = padded.getPixel(x, y)
+                val pixel = padded[x, y]
                 val r = ((pixel shr 16) and 0xFF) / 255f
                 val g = ((pixel shr 8) and 0xFF) / 255f
                 val b = (pixel and 0xFF) / 255f

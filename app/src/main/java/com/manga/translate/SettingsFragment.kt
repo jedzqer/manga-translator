@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.manga.translate.databinding.DialogLlmParamsBinding
@@ -22,12 +23,28 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.NumberFormat
 import java.util.Locale
 
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
     private lateinit var settingsStore: SettingsStore
+    private val numberFormatter by lazy {
+        NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+            isGroupingUsed = false
+        }
+    }
+
+    private fun formatNumber(value: Number): String = numberFormatter.format(value)
+    private fun formatNumberOrEmpty(value: Number?): String = value?.let(::formatNumber).orEmpty()
+    private fun parseIntInput(text: String?): Int? = runCatching {
+        numberFormatter.parse(text?.trim().orEmpty())?.toInt()
+    }.getOrNull()
+
+    private fun parseDoubleInput(text: String?): Double? = runCatching {
+        numberFormatter.parse(text?.trim().orEmpty())?.toDouble()
+    }.getOrNull()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -45,8 +62,8 @@ class SettingsFragment : Fragment() {
         binding.apiUrlInput.setText(settings.apiUrl)
         binding.apiKeyInput.setText(settings.apiKey)
         binding.modelNameInput.setText(settings.modelName)
-        binding.apiTimeoutInput.setText(settingsStore.loadApiTimeoutSeconds().toString())
-        binding.maxConcurrencyInput.setText(settingsStore.loadMaxConcurrency().toString())
+        binding.apiTimeoutInput.setText(formatNumber(settingsStore.loadApiTimeoutSeconds()))
+        binding.maxConcurrencyInput.setText(formatNumber(settingsStore.loadMaxConcurrency()))
         binding.textLayoutSwitch.isChecked = settingsStore.loadUseHorizontalText()
         binding.modelIoLoggingSwitch.isChecked = settingsStore.loadModelIoLogging()
         val themeMode = settingsStore.loadThemeMode()
@@ -117,18 +134,20 @@ class SettingsFragment : Fragment() {
         val model = binding.modelNameInput.text?.toString()?.trim().orEmpty()
         settingsStore.save(ApiSettings(url, key, model))
         val timeoutInput = binding.apiTimeoutInput.text?.toString()?.trim()
-        val timeoutSeconds = timeoutInput?.toIntOrNull() ?: settingsStore.loadApiTimeoutSeconds()
+        val timeoutSeconds = parseIntInput(timeoutInput) ?: settingsStore.loadApiTimeoutSeconds()
         settingsStore.saveApiTimeoutSeconds(timeoutSeconds)
         val normalizedTimeout = settingsStore.loadApiTimeoutSeconds()
-        if (normalizedTimeout.toString() != timeoutInput) {
-            binding.apiTimeoutInput.setText(normalizedTimeout.toString())
+        val normalizedTimeoutText = formatNumber(normalizedTimeout)
+        if (normalizedTimeoutText != timeoutInput) {
+            binding.apiTimeoutInput.setText(normalizedTimeoutText)
         }
         val concurrencyInput = binding.maxConcurrencyInput.text?.toString()?.trim()
-        val maxConcurrency = concurrencyInput?.toIntOrNull() ?: settingsStore.loadMaxConcurrency()
+        val maxConcurrency = parseIntInput(concurrencyInput) ?: settingsStore.loadMaxConcurrency()
         val normalized = maxConcurrency.coerceIn(1, 50)
         settingsStore.saveMaxConcurrency(normalized)
-        if (normalized.toString() != concurrencyInput) {
-            binding.maxConcurrencyInput.setText(normalized.toString())
+        val normalizedConcurrencyText = formatNumber(normalized)
+        if (normalizedConcurrencyText != concurrencyInput) {
+            binding.maxConcurrencyInput.setText(normalizedConcurrencyText)
         }
         AppLogger.log("Settings", "API settings saved")
     }
@@ -350,12 +369,12 @@ class SettingsFragment : Fragment() {
     private fun showLlmParamsDialog() {
         val currentParams = settingsStore.loadLlmParameters()
         val dialogBinding = DialogLlmParamsBinding.inflate(layoutInflater)
-        dialogBinding.temperatureInput.setText(currentParams.temperature?.toString().orEmpty())
-        dialogBinding.topPInput.setText(currentParams.topP?.toString().orEmpty())
-        dialogBinding.topKInput.setText(currentParams.topK?.toString().orEmpty())
-        dialogBinding.maxOutputTokensInput.setText(currentParams.maxOutputTokens?.toString().orEmpty())
-        dialogBinding.frequencyPenaltyInput.setText(currentParams.frequencyPenalty?.toString().orEmpty())
-        dialogBinding.presencePenaltyInput.setText(currentParams.presencePenalty?.toString().orEmpty())
+        dialogBinding.temperatureInput.setText(formatNumberOrEmpty(currentParams.temperature))
+        dialogBinding.topPInput.setText(formatNumberOrEmpty(currentParams.topP))
+        dialogBinding.topKInput.setText(formatNumberOrEmpty(currentParams.topK))
+        dialogBinding.maxOutputTokensInput.setText(formatNumberOrEmpty(currentParams.maxOutputTokens))
+        dialogBinding.frequencyPenaltyInput.setText(formatNumberOrEmpty(currentParams.frequencyPenalty))
+        dialogBinding.presencePenaltyInput.setText(formatNumberOrEmpty(currentParams.presencePenalty))
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.llm_params_title)
             .setView(dialogBinding.root)
@@ -395,12 +414,12 @@ class SettingsFragment : Fragment() {
         fun parseDouble(text: String?): Double? {
             val trimmed = text?.trim().orEmpty()
             if (trimmed.isBlank()) return null
-            return trimmed.toDoubleOrNull().also { if (it == null) hasInvalid = true }
+            return parseDoubleInput(trimmed).also { if (it == null) hasInvalid = true }
         }
         fun parseInt(text: String?): Int? {
             val trimmed = text?.trim().orEmpty()
             if (trimmed.isBlank()) return null
-            return trimmed.toIntOrNull().also { if (it == null) hasInvalid = true }
+            return parseIntInput(trimmed).also { if (it == null) hasInvalid = true }
         }
         val params = LlmParameterSettings(
             temperature = parseDouble(dialogBinding.temperatureInput.text?.toString()),
@@ -476,7 +495,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun openUrl(url: String) {
-        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
         val manager = requireContext().packageManager
         if (intent.resolveActivity(manager) != null) {
             startActivity(intent)

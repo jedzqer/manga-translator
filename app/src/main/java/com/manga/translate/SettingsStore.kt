@@ -1,6 +1,7 @@
 package com.manga.translate
 
 import android.content.Context
+import androidx.core.content.edit
 
 data class ApiSettings(
     val apiUrl: String,
@@ -23,11 +24,11 @@ class SettingsStore(context: Context) {
     }
 
     fun save(settings: ApiSettings) {
-        prefs.edit()
-            .putString(KEY_API_URL, settings.apiUrl)
-            .putString(KEY_API_KEY, settings.apiKey)
-            .putString(KEY_MODEL_NAME, settings.modelName)
-            .apply()
+        prefs.edit() {
+                putString(KEY_API_URL, settings.apiUrl)
+                .putString(KEY_API_KEY, settings.apiKey)
+                .putString(KEY_MODEL_NAME, settings.modelName)
+            }
     }
 
     fun loadUseHorizontalText(): Boolean {
@@ -35,9 +36,9 @@ class SettingsStore(context: Context) {
     }
 
     fun saveUseHorizontalText(enabled: Boolean) {
-        prefs.edit()
-            .putBoolean(KEY_HORIZONTAL_TEXT, enabled)
-            .apply()
+        prefs.edit() {
+                putBoolean(KEY_HORIZONTAL_TEXT, enabled)
+            }
     }
 
     fun loadModelIoLogging(): Boolean {
@@ -45,9 +46,9 @@ class SettingsStore(context: Context) {
     }
 
     fun saveModelIoLogging(enabled: Boolean) {
-        prefs.edit()
-            .putBoolean(KEY_MODEL_IO_LOGGING, enabled)
-            .apply()
+        prefs.edit() {
+                putBoolean(KEY_MODEL_IO_LOGGING, enabled)
+            }
     }
 
     fun loadMaxConcurrency(): Int {
@@ -57,9 +58,9 @@ class SettingsStore(context: Context) {
 
     fun saveMaxConcurrency(value: Int) {
         val normalized = value.coerceIn(MIN_MAX_CONCURRENCY, MAX_MAX_CONCURRENCY)
-        prefs.edit()
-            .putInt(KEY_MAX_CONCURRENCY, normalized)
-            .apply()
+        prefs.edit() {
+                putInt(KEY_MAX_CONCURRENCY, normalized)
+            }
     }
 
     fun loadApiTimeoutSeconds(): Int {
@@ -73,9 +74,9 @@ class SettingsStore(context: Context) {
 
     fun saveApiTimeoutSeconds(value: Int) {
         val normalized = value.coerceIn(MIN_API_TIMEOUT_SECONDS, MAX_API_TIMEOUT_SECONDS)
-        prefs.edit()
-            .putInt(KEY_API_TIMEOUT_SECONDS, normalized)
-            .apply()
+        prefs.edit() {
+                putInt(KEY_API_TIMEOUT_SECONDS, normalized)
+            }
     }
 
     fun loadThemeMode(): ThemeMode {
@@ -84,9 +85,9 @@ class SettingsStore(context: Context) {
     }
 
     fun saveThemeMode(mode: ThemeMode) {
-        prefs.edit()
-            .putString(KEY_THEME_MODE, mode.prefValue)
-            .apply()
+        prefs.edit() {
+                putString(KEY_THEME_MODE, mode.prefValue)
+            }
     }
 
     fun loadReadingDisplayMode(): ReadingDisplayMode {
@@ -95,9 +96,9 @@ class SettingsStore(context: Context) {
     }
 
     fun saveReadingDisplayMode(mode: ReadingDisplayMode) {
-        prefs.edit()
-            .putString(KEY_READING_DISPLAY_MODE, mode.prefValue)
-            .apply()
+        prefs.edit() {
+                putString(KEY_READING_DISPLAY_MODE, mode.prefValue)
+            }
     }
 
     fun loadLinkSource(): LinkSource {
@@ -106,9 +107,9 @@ class SettingsStore(context: Context) {
     }
 
     fun saveLinkSource(source: LinkSource) {
-        prefs.edit()
-            .putString(KEY_LINK_SOURCE, source.prefValue)
-            .apply()
+        prefs.edit() {
+                putString(KEY_LINK_SOURCE, source.prefValue)
+            }
     }
 
     fun loadLlmParameters(): LlmParameterSettings {
@@ -132,14 +133,14 @@ class SettingsStore(context: Context) {
     }
 
     fun saveLlmParameters(settings: LlmParameterSettings) {
-        prefs.edit()
-            .putOptionalString(KEY_LLM_TEMPERATURE, settings.temperature)
-            .putOptionalString(KEY_LLM_TOP_P, settings.topP)
-            .putOptionalString(KEY_LLM_TOP_K, settings.topK)
-            .putOptionalString(KEY_LLM_MAX_OUTPUT_TOKENS, settings.maxOutputTokens)
-            .putOptionalString(KEY_LLM_FREQUENCY_PENALTY, settings.frequencyPenalty)
-            .putOptionalString(KEY_LLM_PRESENCE_PENALTY, settings.presencePenalty)
-            .apply()
+        prefs.edit() {
+                putOptionalString(KEY_LLM_TEMPERATURE, settings.temperature)
+                .putOptionalString(KEY_LLM_TOP_P, settings.topP)
+                .putOptionalString(KEY_LLM_TOP_K, settings.topK)
+                .putOptionalString(KEY_LLM_MAX_OUTPUT_TOKENS, settings.maxOutputTokens)
+                .putOptionalString(KEY_LLM_FREQUENCY_PENALTY, settings.frequencyPenalty)
+                .putOptionalString(KEY_LLM_PRESENCE_PENALTY, settings.presencePenalty)
+            }
     }
 
     private fun readDoubleWithDefault(key: String, defaultValue: Double): Double? {

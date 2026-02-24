@@ -1,6 +1,7 @@
 package com.manga.translate
 
 import android.content.Context
+import androidx.core.content.edit
 
 class UpdateIgnoreStore(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -11,9 +12,9 @@ class UpdateIgnoreStore(context: Context) {
 
     fun saveIgnoredVersionCode(versionCode: Int) {
         if (versionCode <= 0) return
-        prefs.edit()
-            .putInt(KEY_IGNORED_VERSION_CODE, versionCode)
-            .apply()
+        prefs.edit() {
+                putInt(KEY_IGNORED_VERSION_CODE, versionCode)
+            }
     }
 
     fun isIgnored(versionCode: Int): Boolean {

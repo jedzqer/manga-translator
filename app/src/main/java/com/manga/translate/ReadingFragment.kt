@@ -22,8 +22,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class ReadingFragment : Fragment() {
+    private fun formatInt(value: Int): String = String.format(Locale.getDefault(), "%d", value)
+
     private var _binding: FragmentReadingBinding? = null
     private val binding get() = _binding!!
     private val readingSessionViewModel: ReadingSessionViewModel by activityViewModels()
@@ -113,7 +116,7 @@ class ReadingFragment : Fragment() {
                 if (resizeUpdatingWidthSlider) return
                 val percent = (progress + resizeMinPercent).coerceIn(resizeMinPercent, resizeMaxPercent)
                 resizeUpdatingWidthInput = true
-                binding.readingResizeWidthInput.setText(percent.toString())
+                binding.readingResizeWidthInput.setText(formatInt(percent))
                 binding.readingResizeWidthInput.setSelection(binding.readingResizeWidthInput.text?.length ?: 0)
                 resizeUpdatingWidthInput = false
                 resizeWidthPercent = percent
@@ -131,7 +134,7 @@ class ReadingFragment : Fragment() {
                 if (resizeUpdatingHeightSlider) return
                 val percent = (progress + resizeMinPercent).coerceIn(resizeMinPercent, resizeMaxPercent)
                 resizeUpdatingHeightInput = true
-                binding.readingResizeHeightInput.setText(percent.toString())
+                binding.readingResizeHeightInput.setText(formatInt(percent))
                 binding.readingResizeHeightInput.setSelection(binding.readingResizeHeightInput.text?.length ?: 0)
                 resizeUpdatingHeightInput = false
                 resizeHeightPercent = percent
@@ -154,7 +157,7 @@ class ReadingFragment : Fragment() {
                 val clamped = value.coerceIn(resizeMinPercent, resizeMaxPercent)
                 if (clamped.toString() != raw) {
                     resizeUpdatingWidthInput = true
-                    binding.readingResizeWidthInput.setText(clamped.toString())
+                    binding.readingResizeWidthInput.setText(formatInt(clamped))
                     binding.readingResizeWidthInput.setSelection(binding.readingResizeWidthInput.text?.length ?: 0)
                     resizeUpdatingWidthInput = false
                 }
@@ -177,7 +180,7 @@ class ReadingFragment : Fragment() {
                 val clamped = value.coerceIn(resizeMinPercent, resizeMaxPercent)
                 if (clamped.toString() != raw) {
                     resizeUpdatingHeightInput = true
-                    binding.readingResizeHeightInput.setText(clamped.toString())
+                    binding.readingResizeHeightInput.setText(formatInt(clamped))
                     binding.readingResizeHeightInput.setSelection(binding.readingResizeHeightInput.text?.length ?: 0)
                     resizeUpdatingHeightInput = false
                 }
@@ -592,11 +595,11 @@ class ReadingFragment : Fragment() {
         binding.readingResizeHeightSlider.progress = percent - resizeMinPercent
         resizeUpdatingHeightSlider = false
         resizeUpdatingWidthInput = true
-        binding.readingResizeWidthInput.setText(percent.toString())
+        binding.readingResizeWidthInput.setText(formatInt(percent))
         binding.readingResizeWidthInput.setSelection(binding.readingResizeWidthInput.text?.length ?: 0)
         resizeUpdatingWidthInput = false
         resizeUpdatingHeightInput = true
-        binding.readingResizeHeightInput.setText(percent.toString())
+        binding.readingResizeHeightInput.setText(formatInt(percent))
         binding.readingResizeHeightInput.setSelection(binding.readingResizeHeightInput.text?.length ?: 0)
         resizeUpdatingHeightInput = false
         binding.readingResizePanel.visibility = View.VISIBLE

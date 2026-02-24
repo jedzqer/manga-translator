@@ -12,6 +12,7 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import androidx.core.graphics.withTranslation
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -399,10 +400,9 @@ class FloatingTranslationView @JvmOverloads constructor(
             }
             val dx = rect.left
             val dy = rect.top + ((rect.height() - layout.height) / 2f).coerceAtLeast(0f)
-            canvas.save()
-            canvas.translate(dx, dy)
-            layout.draw(canvas)
-            canvas.restore()
+            canvas.withTranslation(dx, dy) {
+                layout.draw(this)
+            }
         }
     }
 

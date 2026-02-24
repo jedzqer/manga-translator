@@ -12,8 +12,11 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.documentfile.provider.DocumentFile
+import java.util.Locale
 
 internal class LibraryDialogs {
+    private fun formatInt(value: Int): String = String.format(Locale.getDefault(), "%d", value)
+
     fun showCreateFolderDialog(context: Context, onConfirm: (String) -> Unit) {
         val input = EditText(context).apply {
             hint = context.getString(R.string.folder_name_hint)
@@ -136,7 +139,7 @@ internal class LibraryDialogs {
     ) {
         val input = EditText(context).apply {
             hint = context.getString(R.string.export_thread_hint)
-            setText(defaultThreads.toString())
+            setText(formatInt(defaultThreads))
             setSelection(text.length)
             inputType = InputType.TYPE_CLASS_NUMBER
             imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
@@ -232,7 +235,7 @@ internal class LibraryDialogs {
         }
         val input = EditText(context).apply {
             hint = context.getString(R.string.embed_thread_hint)
-            setText(defaultThreads.toString())
+            setText(formatInt(defaultThreads))
             setSelection(text.length)
             inputType = InputType.TYPE_CLASS_NUMBER
             imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI

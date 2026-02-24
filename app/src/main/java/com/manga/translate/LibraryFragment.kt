@@ -10,6 +10,8 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.net.toUri
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -272,7 +274,7 @@ class LibraryFragment : Fragment() {
                         selectionController.exitSelectionMode()
                         return
                     }
-                    if (binding.folderDetailContainer.visibility == View.VISIBLE) {
+                    if (binding.folderDetailContainer.isVisible) {
                         showFolderList()
                     } else {
                         isEnabled = false
@@ -366,7 +368,7 @@ class LibraryFragment : Fragment() {
     }
 
     private fun openUrlOrToast(url: String) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
         val manager = requireContext().packageManager
         if (intent.resolveActivity(manager) != null) {
             startActivity(intent)

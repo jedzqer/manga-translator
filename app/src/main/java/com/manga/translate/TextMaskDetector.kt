@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
 import kotlin.math.max
 import kotlin.math.sqrt
 
@@ -31,7 +33,7 @@ class TextMaskDetector(
 
         val width = bitmap.width
         val height = bitmap.height
-        val maskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val maskBitmap = createBitmap(width, height)
         val canvas = Canvas(maskBitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFFFFF.toInt()
@@ -52,7 +54,7 @@ class TextMaskDetector(
         for (y in 0 until height) {
             val row = y * width
             for (x in 0 until width) {
-                mask[row + x] = (maskBitmap.getPixel(x, y) ushr 24) > 0
+                mask[row + x] = (maskBitmap[x, y] ushr 24) > 0
             }
         }
         maskBitmap.recycle()
@@ -128,7 +130,7 @@ class TextMaskDetector(
             for (x in 0 until width) {
                 val idx = row + x
                 if (!candidate[idx]) continue
-                val pixel = bitmap.getPixel(x, y)
+                val pixel = bitmap[x, y]
                 val r = Color.red(pixel)
                 val g = Color.green(pixel)
                 val b = Color.blue(pixel)

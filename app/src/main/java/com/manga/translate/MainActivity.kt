@@ -17,6 +17,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.tabs.TabLayoutMediator
 import com.manga.translate.databinding.ActivityMainBinding
@@ -123,9 +124,9 @@ class MainActivity : AppCompatActivity() {
         val downloadUrl = resolveDownloadUrl(updateInfo.apkUrl)
         val versionLabel = buildVersionLabel(updateInfo)
         val safeVersion = versionLabel.replace(Regex("[^A-Za-z0-9._-]"), "_")
-        val fileName = Uri.parse(downloadUrl).lastPathSegment
+        val fileName = downloadUrl.toUri().lastPathSegment
             ?: "manga-translator-$safeVersion.apk"
-        val request = DownloadManager.Request(Uri.parse(downloadUrl))
+        val request = DownloadManager.Request(downloadUrl.toUri())
             .setTitle(getString(R.string.update_download_title, versionLabel))
             .setDescription(getString(R.string.update_download_description, versionLabel))
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
@@ -163,7 +164,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openProjectPage() {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(PROJECT_URL))
+        val intent = Intent(Intent.ACTION_VIEW, PROJECT_URL.toUri())
         val manager = packageManager
         if (intent.resolveActivity(manager) != null) {
             startActivity(intent)

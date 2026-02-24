@@ -2,6 +2,8 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.core.graphics.get
+import androidx.core.graphics.scale
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -63,13 +65,13 @@ class EnglishOcr(private val context: Context) : OcrEngine {
         targetW = targetW.coerceAtMost(imgW)
         
         // 调整图像大小
-        val resized = Bitmap.createScaledBitmap(bitmap, targetW, imgH, true)
+        val resized = bitmap.scale(targetW, imgH)
         
         // 归一化并转换为CHW格式（BGR顺序）
         val input = FloatArray(3 * imgH * imgW)
         for (y in 0 until imgH) {
             for (x in 0 until targetW) {
-                val pixel = resized.getPixel(x, y)
+                val pixel = resized[x, y]
                 val r = ((pixel shr 16) and 0xFF) / 255f
                 val g = ((pixel shr 8) and 0xFF) / 255f
                 val b = (pixel and 0xFF) / 255f

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.core.content.edit
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
@@ -16,7 +17,7 @@ internal class LibraryPreferencesGateway(
     }
 
     fun setFullTranslateEnabled(folder: File, enabled: Boolean) {
-        prefs.edit().putBoolean(fullTranslateKeyPrefix + folder.absolutePath, enabled).apply()
+        prefs.edit() {putBoolean(fullTranslateKeyPrefix + folder.absolutePath, enabled)}
     }
 
     fun getTranslationLanguage(folder: File): TranslationLanguage {
@@ -25,7 +26,7 @@ internal class LibraryPreferencesGateway(
     }
 
     fun setTranslationLanguage(folder: File, language: TranslationLanguage) {
-        prefs.edit().putString(languageKeyPrefix + folder.absolutePath, language.name).apply()
+        prefs.edit() {putString(languageKeyPrefix + folder.absolutePath, language.name)}
     }
 
     fun getEhViewerTreeUri(): Uri? {
@@ -33,7 +34,7 @@ internal class LibraryPreferencesGateway(
     }
 
     fun setEhViewerTreeUri(uri: Uri) {
-        prefs.edit().putString(ehViewerTreeKey, uri.toString()).apply()
+        prefs.edit() {putString(ehViewerTreeKey, uri.toString())}
     }
 
     fun getExportTreeUri(): Uri? {
@@ -41,7 +42,7 @@ internal class LibraryPreferencesGateway(
     }
 
     fun setExportTreeUri(uri: Uri) {
-        prefs.edit().putString(exportTreeKey, uri.toString()).apply()
+        prefs.edit() {putString(exportTreeKey, uri.toString())}
     }
 
     fun hasEhViewerPermission(uri: Uri): Boolean {

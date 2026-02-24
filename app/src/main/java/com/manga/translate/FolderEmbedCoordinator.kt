@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Build
 import android.content.SharedPreferences
+import androidx.core.content.edit
+import androidx.core.graphics.set
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -69,12 +71,12 @@ internal class FolderEmbedCoordinator(
 
         val normalizedThreads = normalizeEmbedThreads(embedThreads)
         val effectiveBubbleEllipseLimit = useWhiteBubbleCover && useBubbleEllipseLimit
-        prefs.edit()
-            .putInt(KEY_EMBED_THREADS, normalizedThreads)
-            .putBoolean(KEY_EMBED_WHITE_BUBBLE_COVER, useWhiteBubbleCover)
-            .putBoolean(KEY_EMBED_BUBBLE_ELLIPSE_LIMIT, effectiveBubbleEllipseLimit)
-            .putBoolean(KEY_EMBED_IMAGE_REPAIR, useImageRepair)
-            .apply()
+        prefs.edit() {
+                putInt(KEY_EMBED_THREADS, normalizedThreads)
+                .putBoolean(KEY_EMBED_WHITE_BUBBLE_COVER, useWhiteBubbleCover)
+                .putBoolean(KEY_EMBED_BUBBLE_ELLIPSE_LIMIT, effectiveBubbleEllipseLimit)
+                .putBoolean(KEY_EMBED_IMAGE_REPAIR, useImageRepair)
+            }
 
         onSetActionsEnabled(false)
         TranslationKeepAliveService.start(
@@ -452,7 +454,7 @@ internal class FolderEmbedCoordinator(
             val row = y * width
             for (x in 0 until width) {
                 if (!coverMask[row + x]) continue
-                prepared.setPixel(x, y, Color.WHITE)
+                prepared[x, y] = Color.WHITE
             }
         }
         return prepared

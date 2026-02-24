@@ -2,6 +2,10 @@ package com.manga.translate
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
+import androidx.core.graphics.scale
+import androidx.core.graphics.set
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -27,7 +31,7 @@ class MiganInpainter(
         if (!eraseMask.any { it }) return source.copy(Bitmap.Config.ARGB_8888, true)
 
         val expandedMask = dilateMask(eraseMask, width, height, PRE_MODEL_DILATE_ITERATIONS)
-        val resizedImage = Bitmap.createScaledBitmap(source, MODEL_SIZE, MODEL_SIZE, true)
+        val resizedImage = source.scale(MODEL_SIZE, MODEL_SIZE)
         val resizedMask = resizeMaskConservative(expandedMask, width, height, MODEL_SIZE, MODEL_SIZE)
         val input = FloatArray(4 * MODEL_SIZE * MODEL_SIZE)
         val hw = MODEL_SIZE * MODEL_SIZE
@@ -35,7 +39,7 @@ class MiganInpainter(
         for (y in 0 until MODEL_SIZE) {
             for (x in 0 until MODEL_SIZE) {
                 val idx = y * MODEL_SIZE + x
-                val pixel = resizedImage.getPixel(x, y)
+                val pixel = resizedImage[x, y]
                 val r = ((pixel shr 16) and 0xFF) / 255f
                 val g = ((pixel shr 8) and 0xFF) / 255f
                 val b = (pixel and 0xFF) / 255f
@@ -66,7 +70,7 @@ class MiganInpainter(
             }
         }
 
-        val generatedScaled = Bitmap.createScaledBitmap(generated, width, height, true)
+        val generatedScaled = generated.scale(width, height)
         if (generatedScaled !== generated) {
             generated.recycle()
         }
@@ -77,7 +81,7 @@ class MiganInpainter(
             for (x in 0 until width) {
                 val idx = row + x
                 if (expandedMask[idx]) {
-                    output.setPixel(x, y, generatedScaled.getPixel(x, y))
+                    output[x, y] = generatedScaled[x, y]
                 }
             }
         }
@@ -161,7 +165,7 @@ class MiganInpainter(
     }
 
     private fun decodeOutputToBitmap(output: FloatArray): Bitmap {
-        val bitmap = Bitmap.createBitmap(MODEL_SIZE, MODEL_SIZE, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(MODEL_SIZE, MODEL_SIZE)
         val hw = MODEL_SIZE * MODEL_SIZE
         for (y in 0 until MODEL_SIZE) {
             for (x in 0 until MODEL_SIZE) {
@@ -170,7 +174,7 @@ class MiganInpainter(
                 val g = (((output[hw + idx] + 1f) * 0.5f).coerceIn(0f, 1f) * 255f).toInt()
                 val b = (((output[2 * hw + idx] + 1f) * 0.5f).coerceIn(0f, 1f) * 255f).toInt()
                 val color = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-                bitmap.setPixel(x, y, color)
+                bitmap[x, y] = color
             }
         }
         return bitmap

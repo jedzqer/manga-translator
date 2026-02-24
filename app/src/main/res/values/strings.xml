@@ -110,7 +110,6 @@
     <string name="folder_preprocess_progress">%1$s（%2$d/%3$d）</string>
     <string name="folder_preprocess_stage_ocr">预处理 OCR</string>
     <string name="folder_preprocess_stage_glossary">预处理 译名提取</string>
-    <string name="folder_glossary_progress">提取译名中…</string>
     <string name="folder_translation_count">%1$d/%2$d</string>
     <string name="translation_done">翻译完成</string>
     <string name="translation_failed">翻译失败</string>
@@ -119,7 +118,6 @@
     <string name="folder_embed_failed">嵌字失败</string>
     <string name="folder_embed_failed_image">嵌字失败：%1$s</string>
     <string name="folder_embed_running">已有嵌字任务在进行中</string>
-    <string name="folder_embed_missing_translation">请先翻译后再嵌字，缺少：%1$s</string>
     <string name="folder_read_force_bubble_unembedded">检测到未嵌字图片，已切换为气泡模式阅读</string>
     <string name="folder_unembed_done">已取消嵌字</string>
     <string name="folder_unembed_failed">取消嵌字失败</string>
@@ -162,8 +160,8 @@
     <string name="export_success_title">导出成功</string>
     <string name="export_success_message">文件已导出到：%1$s</string>
     <string name="export_options_title">导出参数</string>
-    <string name="export_thread_hint">导出线程数 (1-16)</string>
-    <string name="export_thread_invalid">线程数无效，请输入 1-16</string>
+    <string name="export_thread_hint">导出线程数 (1–16)</string>
+    <string name="export_thread_invalid">线程数无效，请输入 1–16</string>
     <string name="export_as_cbz_option">导出为 CBZ</string>
     <string name="export_embedded_images_option">导出嵌入图片</string>
     <string name="export_path_hint_format">导出路径：%1$s</string>
@@ -171,8 +169,8 @@
     <!-- Embed -->
     <string name="embed_options_title">嵌字参数</string>
     <string name="embed_thread_note">该参数用于调整嵌字线程数。</string>
-    <string name="embed_thread_hint">嵌字线程数 (1-16)</string>
-    <string name="embed_thread_invalid">线程数无效，请输入 1-16</string>
+    <string name="embed_thread_hint">嵌字线程数 (1–16)</string>
+    <string name="embed_thread_invalid">线程数无效，请输入 1–16</string>
     <string name="embed_white_cover_option">使用白色覆盖气泡内文字</string>
     <string name="embed_ellipse_limit_option">限制白色覆盖在气泡椭圆内</string>
     <string name="embed_image_repair_option">启用图像修复（非气泡）</string>

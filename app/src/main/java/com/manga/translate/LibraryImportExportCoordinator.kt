@@ -11,6 +11,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
+import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.CoroutineScope
@@ -226,10 +228,10 @@ internal class LibraryImportExportCoordinator(
         pendingExportThreads = normalizeExportThreads(exportThreads)
         pendingExportAsCbz = exportAsCbz
         pendingExportEmbeddedImages = exportEmbeddedImages
-        prefsRef.edit()
-            .putInt(KEY_EXPORT_THREADS, pendingExportThreads)
-            .putBoolean(KEY_EXPORT_AS_CBZ, pendingExportAsCbz)
-            .apply()
+        prefsRef.edit() {
+                putInt(KEY_EXPORT_THREADS, pendingExportThreads)
+                .putBoolean(KEY_EXPORT_AS_CBZ, pendingExportAsCbz)
+            }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val treeUri = preferencesGateway.getExportTreeUri()
             if (treeUri == null || !preferencesGateway.hasExportPermission(treeUri)) {
@@ -601,6 +603,7 @@ internal class LibraryImportExportCoordinator(
         return success
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveBitmapToMediaStore(
         context: Context,
         bitmap: Bitmap,
