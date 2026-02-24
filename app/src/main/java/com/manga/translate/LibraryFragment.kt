@@ -482,13 +482,17 @@ class LibraryFragment : Fragment() {
         val images = repository.listImages(folder)
         dialogs.showEmbedOptionsDialog(
             context = requireContext(),
-            defaultThreads = embedCoordinator.getEmbedThreadCount()
-        ) { embedThreads ->
+            defaultThreads = embedCoordinator.getEmbedThreadCount(),
+            defaultUseWhiteBubbleCover = embedCoordinator.getUseWhiteBubbleCover(),
+            defaultUseEllipseLimit = embedCoordinator.getUseBubbleEllipseLimit()
+        ) { embedThreads, useWhiteBubbleCover, useBubbleEllipseLimit ->
             embedCoordinator.embedFolder(
                 scope = viewLifecycleOwner.lifecycleScope,
                 folder = folder,
                 images = images,
                 embedThreads = embedThreads,
+                useWhiteBubbleCover = useWhiteBubbleCover,
+                useBubbleEllipseLimit = useBubbleEllipseLimit,
                 onSetActionsEnabled = { enabled ->
                     setEmbedActionsEnabled(enabled)
                 }

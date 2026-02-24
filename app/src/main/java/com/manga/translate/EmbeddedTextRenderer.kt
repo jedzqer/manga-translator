@@ -23,7 +23,8 @@ class EmbeddedTextRenderer {
     fun render(
         source: Bitmap,
         translation: TranslationResult,
-        verticalLayoutEnabled: Boolean
+        verticalLayoutEnabled: Boolean,
+        shouldDrawTextBackground: (BubbleTranslation) -> Boolean = { true }
     ): Bitmap {
         val output = source.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(output)
@@ -47,7 +48,13 @@ class EmbeddedTextRenderer {
                 bubble.rect.right * scaleX,
                 bubble.rect.bottom * scaleY
             )
-            drawTextInRect(canvas, text, rect, verticalLayoutEnabled)
+            drawTextInRect(
+                canvas = canvas,
+                text = text,
+                rect = rect,
+                verticalLayoutEnabled = verticalLayoutEnabled,
+                drawBackground = shouldDrawTextBackground(bubble)
+            )
         }
         return output
     }
@@ -56,7 +63,8 @@ class EmbeddedTextRenderer {
         canvas: Canvas,
         text: String,
         rect: RectF,
-        verticalLayoutEnabled: Boolean
+        verticalLayoutEnabled: Boolean,
+        drawBackground: Boolean
     ) {
         if (rect.width() <= 0f || rect.height() <= 0f) return
         val pad = (min(rect.width(), rect.height()) * 0.08f).coerceAtLeast(4f)
@@ -64,7 +72,7 @@ class EmbeddedTextRenderer {
         textRect.inset(pad, pad)
 
         if (verticalLayoutEnabled) {
-            drawVerticalTextInRect(canvas, text, textRect)
+            drawVerticalTextInRect(canvas, text, textRect, drawBackground)
         } else {
             val maxWidth = textRect.width().toInt().coerceAtLeast(1)
             val maxHeight = textRect.height().toInt().coerceAtLeast(1)
@@ -76,7 +84,7 @@ class EmbeddedTextRenderer {
             }
             val dx = textRect.left
             val dy = textRect.top + ((textRect.height() - layout.height) / 2f).coerceAtLeast(0f)
-            drawHorizontalPerGlyph(canvas, text, layout, dx, dy, textRect)
+            drawHorizontalPerGlyph(canvas, text, layout, dx, dy, textRect, drawBackground)
         }
     }
 
@@ -89,7 +97,7 @@ class EmbeddedTextRenderer {
             .build()
     }
 
-    private fun drawVerticalTextInRect(canvas: Canvas, text: String, rect: RectF) {
+    private fun drawVerticalTextInRect(canvas: Canvas, text: String, rect: RectF, drawBackground: Boolean) {
         val maxWidth = rect.width().toInt().coerceAtLeast(1)
         val maxHeight = rect.height().toInt().coerceAtLeast(1)
         var textSize = (rect.width() / 2.2f).coerceIn(12f, 42f)
@@ -117,15 +125,17 @@ class EmbeddedTextRenderer {
             val charWidth = textPaint.measureText(glyph)
             val x = dx - col * layout.columnWidth + (layout.columnWidth - charWidth) / 2f
             val y = dy + row * layout.lineHeight
-            drawGlyphBackground(
-                canvas = canvas,
-                x = x,
-                baseline = y,
-                charWidth = charWidth,
-                fontMetrics = layout.fontMetrics,
-                maxRect = rect,
-                maxNeighborGap = computeVerticalNeighborGap(layout, charWidth)
-            )
+            if (drawBackground) {
+                drawGlyphBackground(
+                    canvas = canvas,
+                    x = x,
+                    baseline = y,
+                    charWidth = charWidth,
+                    fontMetrics = layout.fontMetrics,
+                    maxRect = rect,
+                    maxNeighborGap = computeVerticalNeighborGap(layout, charWidth)
+                )
+            }
             canvas.drawText(glyph, x, y, textPaint)
             row += 1
         }
@@ -137,7 +147,8 @@ class EmbeddedTextRenderer {
         layout: StaticLayout,
         dx: Float,
         dy: Float,
-        maxRect: RectF
+        maxRect: RectF,
+        drawBackground: Boolean
     ) {
         val fm = textPaint.fontMetrics
         for (line in 0 until layout.lineCount) {
@@ -151,7 +162,7 @@ class EmbeddedTextRenderer {
                 val glyphWidth = textPaint.measureText(text, i, i + 1)
                 if (glyphWidth <= 0f) continue
                 val x = dx + layout.getPrimaryHorizontal(i)
-                if (!ch.isWhitespace()) {
+                if (drawBackground && !ch.isWhitespace()) {
                     drawGlyphBackground(
                         canvas = canvas,
                         x = x,

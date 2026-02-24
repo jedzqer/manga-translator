@@ -222,7 +222,9 @@ internal class LibraryDialogs {
     fun showEmbedOptionsDialog(
         context: Context,
         defaultThreads: Int,
-        onConfirm: (Int) -> Unit
+        defaultUseWhiteBubbleCover: Boolean,
+        defaultUseEllipseLimit: Boolean,
+        onConfirm: (Int, Boolean, Boolean) -> Unit
     ) {
         val note = TextView(context).apply {
             text = context.getString(R.string.embed_thread_note)
@@ -233,6 +235,23 @@ internal class LibraryDialogs {
             setSelection(text.length)
             inputType = InputType.TYPE_CLASS_NUMBER
             imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        }
+        val whiteCoverCheckBox = CheckBox(context).apply {
+            text = context.getString(R.string.embed_white_cover_option)
+            isChecked = defaultUseWhiteBubbleCover
+        }
+        val ellipseLimitCheckBox = CheckBox(context).apply {
+            text = context.getString(R.string.embed_ellipse_limit_option)
+            isChecked = defaultUseEllipseLimit
+            isEnabled = defaultUseWhiteBubbleCover
+            alpha = if (defaultUseWhiteBubbleCover) 1f else 0.5f
+        }
+        whiteCoverCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            ellipseLimitCheckBox.isEnabled = isChecked
+            ellipseLimitCheckBox.alpha = if (isChecked) 1f else 0.5f
+            if (!isChecked) {
+                ellipseLimitCheckBox.isChecked = false
+            }
         }
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -267,6 +286,26 @@ internal class LibraryDialogs {
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
             )
+            addView(
+                whiteCoverCheckBox,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP,
+                        10f,
+                        context.resources.displayMetrics
+                    ).toInt()
+                }
+            )
+            addView(
+                ellipseLimitCheckBox,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
         }
         AlertDialog.Builder(context)
             .setTitle(R.string.embed_options_title)
@@ -278,7 +317,7 @@ internal class LibraryDialogs {
                     Toast.makeText(context, R.string.embed_thread_invalid, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                onConfirm(threadCount)
+                onConfirm(threadCount, whiteCoverCheckBox.isChecked, ellipseLimitCheckBox.isChecked)
             }
             .show()
     }
