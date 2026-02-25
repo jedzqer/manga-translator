@@ -1,9 +1,15 @@
 {
-  "versionCode": 22,
-  "versionName": "2.2.3",
-  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/2.2.3/app-release.apk",
-  "changelog": "优化嵌字效果；自适应使用竖向排版符号；优化了一些体验细节",
+  "versionCode": 23,
+  "versionName": "2.2.4",
+  "releasedAt": "2026-02-25",
+  "apkUrl": "https://github.com/jedzqer/manga-translator/releases/download/v2.2.4/app-release.apk",
+  "changelog": "新增API OCR，支持多语言到中文翻译，只要API OCR和翻译模型支持该语言。大幅优化视觉效果",
   "history": [
+    {
+      "versionName": "2.2.3",
+      "releasedAt": "2026-02-24",
+      "changelog": "优化嵌字效果；自适应使用竖向排版符号；优化了一些体验细节"
+    },
     {
       "versionName": "2.2.2",
       "releasedAt": "2026-02-10",
