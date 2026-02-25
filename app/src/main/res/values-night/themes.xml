@@ -8,12 +8,21 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
-    <style name="Theme.MangaTranslator.Pink" parent="Theme.MangaTranslator">
-        <item name="colorPrimary">@color/pink_base</item>
-        <item name="colorPrimaryDark">@color/pink_decor</item>
-        <item name="colorAccent">@color/pink_accent</item>
-        <item name="android:windowBackground">@color/pink_base</item>
-        <item name="android:statusBarColor">@color/pink_accent</item>
+    <style name="Theme.MangaTranslator.Pastel" parent="Theme.MangaTranslator">
+        <item name="colorPrimary">@color/pastel_base</item>
+        <item name="colorPrimaryDark">@color/pastel_decor</item>
+        <item name="colorAccent">@color/pastel_accent</item>
+        <item name="android:windowBackground">@color/pastel_base</item>
+        <item name="android:statusBarColor">@color/pastel_accent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.MangaTranslator.DeepSea" parent="Theme.MangaTranslator">
+        <item name="colorPrimary">@color/deep_sea_base</item>
+        <item name="colorPrimaryDark">@color/deep_sea_decor</item>
+        <item name="colorAccent">@color/deep_sea_accent</item>
+        <item name="android:windowBackground">@color/deep_sea_base</item>
+        <item name="android:statusBarColor">@color/deep_sea_accent</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

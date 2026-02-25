@@ -11,7 +11,8 @@ enum class ThemeMode(
     FOLLOW_SYSTEM("system", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM, R.string.theme_follow_system),
     DARK("dark", AppCompatDelegate.MODE_NIGHT_YES, R.string.theme_dark),
     LIGHT("light", AppCompatDelegate.MODE_NIGHT_NO, R.string.theme_light),
-    PINK("pink", AppCompatDelegate.MODE_NIGHT_NO, R.string.theme_pink);
+    PASTEL("pastel", AppCompatDelegate.MODE_NIGHT_NO, R.string.theme_pastel),
+    DEEP_SEA("deep_sea", AppCompatDelegate.MODE_NIGHT_NO, R.string.theme_deep_sea);
 
     companion object {
         fun fromPref(value: String?): ThemeMode {

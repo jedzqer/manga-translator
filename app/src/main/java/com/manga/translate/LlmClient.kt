@@ -540,7 +540,7 @@ class LlmClient(context: Context) {
     companion object {
         private const val PROMPT_CONFIG_ASSET = "llm_prompts.json"
         private const val OCR_USER_PROMPT =
-            "请识别图片中的文字并按原顺序输出纯文本。不要翻译，不要解释。没有文字时返回空字符串。"
+            "<image>\nOCR this image."
         private const val RETRY_COUNT = 3
         private val requestCounter = AtomicLong(0)
     }

@@ -38,8 +38,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val themeMode = SettingsStore(this).loadThemeMode()
-        if (themeMode == ThemeMode.PINK) {
-            setTheme(R.style.Theme_MangaTranslator_Pink)
+        if (themeMode == ThemeMode.PASTEL) {
+            setTheme(R.style.Theme_MangaTranslator_Pastel)
+        } else if (themeMode == ThemeMode.DEEP_SEA) {
+            setTheme(R.style.Theme_MangaTranslator_DeepSea)
         }
         AppCompatDelegate.setDefaultNightMode(themeMode.nightMode)
         super.onCreate(savedInstanceState)
