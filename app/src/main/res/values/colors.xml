@@ -1,14 +1,24 @@
 <resources>
     <color name="pastel_base">#FFD4C4</color>
+    <color name="pastel_surface">#FFF0E8</color>
     <color name="pastel_decor">#BBD8FF</color>
     <color name="pastel_accent">#2B3A67</color>
-    <color name="deep_sea_base">#EF6837</color>
-    <color name="deep_sea_decor">#114468</color>
-    <color name="deep_sea_accent">#2DE2E6</color>
+    <color name="pastel_button_text">#1F2A4A</color>
+    <color name="deep_sea_base">#071B34</color>
+    <color name="deep_sea_surface">#0D2748</color>
+    <color name="deep_sea_decor">#153B6A</color>
+    <color name="deep_sea_accent">#F08C52</color>
+    <color name="deep_sea_button_text">#F6A46B</color>
     <color name="light_base">#FFFFFF</color>
+    <color name="light_surface">#F2F4F8</color>
     <color name="light_accent">#000000</color>
     <color name="light_decor">#000000</color>
+    <color name="light_button">#E7ECF4</color>
+    <color name="light_button_text">#111111</color>
     <color name="dark_base">#000000</color>
+    <color name="dark_surface">#151515</color>
     <color name="dark_accent">#FFFFFF</color>
     <color name="dark_decor">#FFFFFF</color>
+    <color name="dark_button">#1F1F1F</color>
+    <color name="dark_button_text">#FFFFFF</color>
 </resources>

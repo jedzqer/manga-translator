@@ -11,6 +11,8 @@
         android:id="@+id/main_tabs"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
         android:background="@drawable/bg_tabs_container"
         android:padding="6dp"
         app:tabIndicator="@drawable/bg_tab_indicator"

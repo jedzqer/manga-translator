@@ -64,11 +64,11 @@
 
         <ImageButton
             android:id="@+id/reading_edit_button"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:background="@android:color/transparent"
             android:contentDescription="@string/reading_edit_bubbles"
-            android:padding="6dp"
+            android:padding="3dp"
             android:scaleType="centerInside"
             android:src="@android:drawable/ic_menu_edit" />
     </LinearLayout>

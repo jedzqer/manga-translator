@@ -93,7 +93,7 @@
     <string name="folder_create_failed">创建失败，请检查名称</string>
     <string name="folder_empty">暂无漫画文件夹</string>
     <string name="folder_images_empty">该文件夹暂无图片</string>
-    <string name="folder_add_images">批量上传图片</string>
+    <string name="folder_add_images">上传图片</string>
     <string name="folder_export">导出漫画</string>
     <string name="folder_translate">一键翻译</string>
     <string name="folder_read">开始阅读</string>

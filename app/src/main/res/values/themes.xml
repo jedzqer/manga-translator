@@ -4,6 +4,10 @@
         <item name="colorPrimaryDark">@color/light_decor</item>
         <item name="colorAccent">@color/light_accent</item>
         <item name="android:colorBackground">@color/light_base</item>
+        <item name="surfaceColor">@color/light_surface</item>
+        <item name="buttonFillColor">@color/light_button</item>
+        <item name="buttonFillPressedColor">@color/light_accent</item>
+        <item name="buttonTextColor">@color/light_button_text</item>
         <item name="buttonStyle">@style/Widget.MangaTranslator.Button</item>
         <item name="android:buttonStyle">@style/Widget.MangaTranslator.Button</item>
         <item name="android:windowBackground">@color/light_base</item>
@@ -16,6 +20,10 @@
         <item name="colorPrimaryDark">@color/pastel_decor</item>
         <item name="colorAccent">@color/pastel_accent</item>
         <item name="android:colorBackground">@color/pastel_base</item>
+        <item name="surfaceColor">@color/pastel_surface</item>
+        <item name="buttonFillColor">@color/pastel_decor</item>
+        <item name="buttonFillPressedColor">@color/pastel_accent</item>
+        <item name="buttonTextColor">@color/pastel_button_text</item>
         <item name="android:windowBackground">@color/pastel_base</item>
         <item name="android:statusBarColor">@color/pastel_decor</item>
         <item name="android:windowLightStatusBar">true</item>
@@ -26,6 +34,10 @@
         <item name="colorPrimaryDark">@color/deep_sea_decor</item>
         <item name="colorAccent">@color/deep_sea_accent</item>
         <item name="android:colorBackground">@color/deep_sea_base</item>
+        <item name="surfaceColor">@color/deep_sea_surface</item>
+        <item name="buttonFillColor">@color/deep_sea_decor</item>
+        <item name="buttonFillPressedColor">@color/deep_sea_accent</item>
+        <item name="buttonTextColor">@color/deep_sea_button_text</item>
         <item name="android:windowBackground">@color/deep_sea_base</item>
         <item name="android:statusBarColor">@color/deep_sea_decor</item>
         <item name="android:windowLightStatusBar">false</item>

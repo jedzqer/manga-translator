@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="surfaceColor" format="color" />
+    <attr name="buttonFillColor" format="color" />
+    <attr name="buttonFillPressedColor" format="color" />
+    <attr name="buttonTextColor" format="color" />
+</resources>

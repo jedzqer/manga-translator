@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground"
-    android:padding="16dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp">
 
     <LinearLayout
         android:id="@+id/library_list_container"
@@ -307,31 +308,37 @@
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/tutorial_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="120dp"
+        android:layout_height="40dp"
+        android:gravity="center"
         android:text="@string/tutorial_button"
+        android:textAlignment="center"
         android:textAllCaps="false"
         app:layout_constraintBottom_toTopOf="@id/import_cbz_button"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginStart="4dp"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="8dp" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/import_cbz_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="120dp"
+        android:layout_height="40dp"
+        android:gravity="center"
         android:text="@string/import_cbz"
+        android:textAlignment="center"
         android:textAllCaps="false"
         app:layout_constraintBottom_toTopOf="@id/import_ehviewer_button"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginStart="4dp"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="8dp" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/import_ehviewer_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="120dp"
+        android:layout_height="40dp"
+        android:gravity="center"
         android:text="@string/import_ehviewer"
+        android:textAlignment="center"
         android:textAllCaps="false"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
